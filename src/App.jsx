@@ -12,6 +12,11 @@ import DashboardPage from './components/dashboard/DashboardPage';
 import ProfilePage from './components/profile/ProfilePage';
 // import CompanyProfilePage from './components/profile/CompanyProfilePage';
 
+// Project pages
+import ProjectListPage from './components/projects/ProjectListPage';
+import ProjectDetailPage from './components/projects/ProjectDetailPage';
+import ProjectFormPage from './components/projects/ProjectFormPage';
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -120,6 +125,40 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ChangePasswordPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Project routes */}
+      <Route 
+        path="/projects" 
+        element={
+          <ProtectedRoute>
+            <ProjectListPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/projects/create" 
+        element={
+          <ProtectedRoute>
+            <ProjectFormPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/projects/:id" 
+        element={
+          <ProtectedRoute>
+            <ProjectDetailPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/projects/:id/edit" 
+        element={
+          <ProtectedRoute>
+            <ProjectFormPage />
           </ProtectedRoute>
         } 
       />

@@ -1,6 +1,7 @@
 // src/components/layout/DashboardLayout.jsx
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { FolderIcon } from '@heroicons/react/24/outline';
 import { 
   Bars3Icon, 
   XMarkIcon,
@@ -24,6 +25,7 @@ const DashboardLayout = ({ children }) => {
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: HomeIcon },
     { name: 'Mon profil', href: '/profile', icon: UserIcon },
+    { name: 'Projets', href: '/projects', icon: FolderIcon },
     ...(isProfessionnel ? [{ name: 'Mon entreprise', href: '/company', icon: BuildingOfficeIcon }] : []),
     { name: 'Sécurité', href: '/security', icon: KeyIcon },
   ];
