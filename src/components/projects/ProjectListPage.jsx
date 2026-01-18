@@ -36,6 +36,14 @@ const ProjectListPage = () => {
     { value: 'cancelled', label: 'Annulé' }
   ];
 
+  const statusColors = {
+    draft: 'bg-gray-100 text-gray-800',
+    active: 'bg-green-100 text-green-800',
+    on_hold: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-blue-100 text-blue-800',
+    cancelled: 'bg-red-100 text-red-800'
+  };
+
   useEffect(() => {
     fetchProjects();
   }, [search, statusFilter]);
@@ -149,7 +157,7 @@ const ProjectListPage = () => {
             {/* Debug info - remove this after debugging */}
             <div className="text-sm text-gray-500 p-2 bg-gray-50 rounded">
               Nombre de projets: {Array.isArray(projects) ? projects.length : 'Non-array'}
-              Type: {typeof projects}
+              {/* Type: {typeof projects} */}
             </div>
 
             {!Array.isArray(projects) ? (
@@ -189,6 +197,13 @@ const ProjectListPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
+                    <div className={`border px-4 py-2 rounded-full ${statusColors[project.status]}`}>
+                          {project.status === 'draft' && 'Brouillon'}
+                          {project.status === 'active' && 'Actif'}
+                          {project.status === 'on_hold' && 'En attente'}
+                          {project.status === 'completed' && 'Terminé'}
+                          {project.status === 'cancelled' && 'Annulé'}
+                    </div>
                     <div className="p-5">
                       {/* Project header */}
                       <div className="flex justify-between items-start mb-4">

@@ -114,7 +114,7 @@ const ProfilePage = () => {
                 name="first_name"
                 value={formData.first_name}
                 onChange={handleChange}
-                icon={UserIcon}
+                icon={<UserIcon className="w-5 h-5" />}
                 required
               />
               <Input
@@ -122,6 +122,7 @@ const ProfilePage = () => {
                 name="last_name"
                 value={formData.last_name}
                 onChange={handleChange}
+                icon={<UserIcon className="w-5 h-5" />}
                 required
               />
             </div>
@@ -130,7 +131,7 @@ const ProfilePage = () => {
               label="Email"
               type="email"
               value={user?.email}
-              icon={EnvelopeIcon}
+              icon={<EnvelopeIcon className="w-5 h-5" />}
               disabled
               className="opacity-60"
             />
@@ -141,7 +142,7 @@ const ProfilePage = () => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              icon={PhoneIcon}
+              icon={<PhoneIcon className="w-5 h-5" />}
               placeholder="+212 6 00 00 00 00"
             />
 
