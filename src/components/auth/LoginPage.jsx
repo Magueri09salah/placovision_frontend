@@ -129,7 +129,7 @@ const LoginPage = () => {
           value={formData.email}
           onChange={handleChange}
           placeholder="votre@email.com"
-          icon={EnvelopeIcon}
+          icon={<EnvelopeIcon className="w-5 h-5" />}
           error={errors.email}
           required
           autoComplete="email"

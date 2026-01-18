@@ -122,7 +122,7 @@ const ChangePasswordPage = () => {
               name="current_password"
               value={formData.current_password}
               onChange={handleChange}
-              icon={LockClosedIcon}
+               icon={<LockClosedIcon className="w-5 h-5" />}
               error={errors.current_password}
               required
             />
@@ -134,7 +134,7 @@ const ChangePasswordPage = () => {
                 name="new_password"
                 value={formData.new_password}
                 onChange={handleChange}
-                icon={LockClosedIcon}
+                icon={<LockClosedIcon className="w-5 h-5" />}
                 error={errors.new_password}
                 required
               />

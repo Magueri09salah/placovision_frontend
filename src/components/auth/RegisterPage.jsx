@@ -200,7 +200,7 @@ const RegisterPage = () => {
                 value={formData.first_name}
                 onChange={handleChange}
                 placeholder="Jean"
-                icon={UserIcon}
+                icon={<UserIcon className="w-5 h-5" />}
                 error={errors.first_name}
                 required
               />
@@ -222,7 +222,7 @@ const RegisterPage = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="jean.dupont@email.com"
-              icon={EnvelopeIcon}
+              icon={<EnvelopeIcon className="w-5 h-5" />}
               error={errors.email}
               required
             />
@@ -234,7 +234,7 @@ const RegisterPage = () => {
               value={formData.phone}
               onChange={handleChange}
               placeholder="+212 6 00 00 00 00"
-              icon={PhoneIcon}
+              icon={<PhoneIcon className="w-5 h-5" />}
               error={errors.phone}
             />
 
@@ -246,7 +246,7 @@ const RegisterPage = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    icon={LockClosedIcon}
+                    icon={<LockClosedIcon className="w-5 h-5" />}
                     error={errors.password}
                     required
                     />
