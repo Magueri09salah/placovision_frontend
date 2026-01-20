@@ -111,63 +111,73 @@ const RegisterPage = () => {
     setStep(1);
   };
 
-  const handleSubmit = async (e) => {
-        e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-        if (!validateStep2()) return;
+  if (!validateStep2()) return;
 
-        setLoading(true);
-        setAlert(null);
+  setLoading(true);
+  setAlert(null);
 
-        try {
-            let response;
+  try {
+    if (isGoogleSignup) {
+      // Google signup flow
+      const payload = {
+        google_id: googleData.google_id,
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        avatar: googleData.avatar,
+        account_type: formData.account_type,
+      };
 
-            if (isGoogleSignup) {
-                           
-                const payload = {
-                    google_id: googleData.google_id,
-                    email: formData.email,
-                    first_name: formData.first_name,
-                    last_name: formData.last_name,
-                    avatar: googleData.avatar,
-                    account_type: formData.account_type,
-                };
+      if (formData.account_type === 'professionnel') {
+        payload.company_name = formData.company_name;
+        payload.company_ice = formData.company_ice;
+        payload.company_address = formData.company_address;
+        payload.company_city = formData.company_city;
+        payload.company_phone = formData.company_phone;
+      }
 
-                
-                if (formData.account_type === 'professionnel') {
-                    payload.company_name = formData.company_name;
-                    payload.company_ice = formData.company_ice;
-                    payload.company_address = formData.company_address;
-                    payload.company_city = formData.company_city;
-                    payload.company_phone = formData.company_phone;
-                }
+      const response = await api.post('/auth/google/complete', payload);
+      localStorage.setItem('token', response.data.data.token);
+      navigate('/dashboard');
 
-           
-                response = await api.post('/auth/google/complete', payload);
+    } else {
+      
+      const payload = {
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        password: formData.password,
+        password_confirmation: formData.password_confirmation,
+        account_type: formData.account_type,
+      };
 
-                localStorage.setItem('token', response.data.data.token);
-                navigate('/dashboard');
+      if (formData.account_type === 'professionnel') {
+        payload.company_name = formData.company_name;
+        payload.company_ice = formData.company_ice;
+        payload.company_address = formData.company_address;
+        payload.company_city = formData.company_city;
+        payload.company_phone = formData.company_phone;
+      }
 
-            } else {
-            // 🧾 NORMAL REGISTER
-            const result = await register(formData);
+      const result = await register(payload);
 
-            if (!result.success) {
-                setAlert({ type: 'error', message: result.error });
-                return;
-            }
+      if (!result.success) {
+        setAlert({ type: 'error', message: result.error });
+        return;
+      }
 
-            navigate('/dashboard');
-            }
-        } catch (error) {
-            setAlert({
-            type: 'error',
-            message: error.response?.data?.message || 'Erreur lors de l’inscription'
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+      navigate('/dashboard');
+    }
+  } catch (error) {
+   setAlert({ type: 'error', message: 'Une erreur est survenue. Veuillez réessayer.' });
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   return (
@@ -326,64 +336,64 @@ const RegisterPage = () => {
             </div>
 
             {/* Company Fields (if professional) */}
-            {formData.account_type === 'professionnel' && (
-              <div className="space-y-4 pt-4 border-t border-neutral-100">
-                <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                  <BuildingOfficeIcon className="w-4 h-4" />
-                  Informations entreprise
-                </h3>
-                
-                <Input
-                  label="Nom de l'entreprise"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  placeholder="Ma Société SARL"
-                  icon={BuildingOfficeIcon}
-                  error={errors.company_name}
-                  required
-                />
+{formData.account_type === 'professionnel' && (
+  <div className="space-y-4 pt-4 border-t border-neutral-100">
+    <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+      <BuildingOfficeIcon className="w-4 h-4" />
+      Informations entreprise
+    </h3>
+    
+    <Input
+      label="Nom de l'entreprise"
+      name="company_name"
+      value={formData.company_name}
+      onChange={handleChange}
+      placeholder="Ma Société SARL"
+      icon={<BuildingOfficeIcon className="w-5 h-5" />}
+      error={errors.company_name}
+      required
+    />
 
-                <Input
-                  label="ICE"
-                  name="company_ice"
-                  value={formData.company_ice}
-                  onChange={handleChange}
-                  placeholder="000000000000000"
-                  icon={IdentificationIcon}
-                  error={errors.company_ice}
-                />
+    <Input
+      label="ICE"
+      name="company_ice"
+      value={formData.company_ice}
+      onChange={handleChange}
+      placeholder="000000000000000"
+      icon={<IdentificationIcon className="w-5 h-5" />}
+      error={errors.company_ice}
+    />
 
-                <Input
-                  label="Adresse"
-                  name="company_address"
-                  value={formData.company_address}
-                  onChange={handleChange}
-                  placeholder="123 Rue Example"
-                  icon={MapPinIcon}
-                  error={errors.company_address}
-                />
+    <Input
+      label="Adresse"
+      name="company_address"
+      value={formData.company_address}
+      onChange={handleChange}
+      placeholder="123 Rue Example"
+      icon={<MapPinIcon className="w-5 h-5" />}
+      error={errors.company_address}
+    />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Ville"
-                    name="company_city"
-                    value={formData.company_city}
-                    onChange={handleChange}
-                    placeholder="Casablanca"
-                    error={errors.company_city}
-                  />
-                  <Input
-                    label="Téléphone"
-                    name="company_phone"
-                    value={formData.company_phone}
-                    onChange={handleChange}
-                    placeholder="+212 5 00 00 00 00"
-                    error={errors.company_phone}
-                  />
-                </div>
-              </div>
-            )}
+    <div className="grid grid-cols-2 gap-4">
+      <Input
+        label="Ville"
+        name="company_city"
+        value={formData.company_city}
+        onChange={handleChange}
+        placeholder="Casablanca"
+        error={errors.company_city}
+      />
+      <Input
+        label="Téléphone"
+        name="company_phone"
+        value={formData.company_phone}
+        onChange={handleChange}
+        placeholder="+212 5 00 00 00 00"
+        error={errors.company_phone}
+      />
+    </div>
+  </div>
+)}
 
             <div className="flex gap-3 mt-6">
               <Button 
