@@ -1,6 +1,6 @@
 // src/components/layout/DashboardLayout.jsx
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { href, Link, useLocation, useNavigate } from 'react-router-dom';
 import { FolderIcon } from '@heroicons/react/24/outline';
 import { 
   Bars3Icon, 
@@ -10,7 +10,8 @@ import {
   BuildingOfficeIcon,
   KeyIcon,
   ArrowRightOnRectangleIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../common/Logo';
@@ -27,6 +28,7 @@ const DashboardLayout = ({ children }) => {
     { name: 'Mon profil', href: '/profile', icon: UserIcon },
     { name: 'Projets', href: '/projects', icon: FolderIcon },
     ...(isProfessionnel ? [{ name: 'Mon entreprise', href: '/company', icon: BuildingOfficeIcon }] : []),
+    { name : 'Devis', href: '/quotations', icon: DocumentTextIcon },
     { name: 'Sécurité', href: '/security', icon: KeyIcon },
   ];
 

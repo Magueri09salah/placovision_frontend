@@ -17,6 +17,11 @@ import ProjectListPage from './components/projects/ProjectListPage';
 import ProjectDetailPage from './components/projects/ProjectDetailPage';
 import ProjectFormPage from './components/projects/ProjectFormPage';
 
+//Quotation pages 
+import QuotationListPage from './components/quotations/QuotationListPage';
+import QuotationFormPage from './components/quotations/QuotationFormPage';
+import QuotationDetailPage from './components/quotations/QuotationDetailPage';
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -162,6 +167,34 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      {/* Quotation routes */}
+      <Route
+        path="/quotations"
+        element={
+          <ProtectedRoute>
+            <QuotationListPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/quotations/create"
+        element={
+          <ProtectedRoute>
+            <QuotationFormPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/quotations/:id"
+        element={
+          <ProtectedRoute>
+            <QuotationDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
       
       {/* Redirect root to dashboard or login */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -75,4 +75,13 @@ export const projectAPI = {
   deleteProject: (id) => api.delete(`/projects/${id}`),
 };
 
+export const quotationAPI = {
+  getQuotations: (params = {}) => api.get('/quotations', { params }),
+  getQuotation: (id) => api.get(`/quotations/${id}`),
+  createQuotation: (data) => api.post('/quotations', data),
+  exportPdf: (id) => api.get(`/quotations/${id}/pdf`, {
+    responseType: 'blob',
+  }),
+};
+
 export default api;
