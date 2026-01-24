@@ -21,6 +21,7 @@ import ProjectFormPage from './components/projects/ProjectFormPage';
 import QuotationListPage from './components/quotations/QuotationListPage';
 import QuotationFormPage from './components/quotations/QuotationFormPage';
 import QuotationDetailPage from './components/quotations/QuotationDetailPage';
+import QuotationEditPage from './components/quotations/QuotationEditPage';
 
 // Loading component
 const LoadingScreen = () => (
@@ -194,6 +195,15 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+       <Route 
+        path="/quotations/:id/edit" 
+        element={
+            <ProtectedRoute>
+              <QuotationEditPage />
+            </ProtectedRoute>
+          } 
+       />
 
       
       {/* Redirect root to dashboard or login */}

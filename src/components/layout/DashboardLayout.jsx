@@ -55,7 +55,7 @@ const DashboardLayout = ({ children }) => {
       `}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
             <Logo size="small" />
             <button 
               onClick={() => setSidebarOpen(false)}
@@ -125,7 +125,7 @@ const DashboardLayout = ({ children }) => {
             </div>
 
             {/* User menu */}
-            <div className="relative">
+            <div className="relative ml-auto">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
