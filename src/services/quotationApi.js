@@ -8,7 +8,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+
 });
+axios.defaults.withCredentials = true;
 
 // Add token to requests
 api.interceptors.request.use((config) => {

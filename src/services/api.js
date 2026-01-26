@@ -10,6 +10,7 @@ const api = axios.create({
     'Accept': 'application/json',
   },
 });
+axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
