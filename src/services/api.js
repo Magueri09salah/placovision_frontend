@@ -5,12 +5,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
 });
-axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
