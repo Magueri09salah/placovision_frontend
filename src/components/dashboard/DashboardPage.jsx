@@ -285,16 +285,7 @@ const DashboardPage = () => {
         </div>
 
         {/* ============ KPI CARDS ============ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Chiffre d'affaires"
-            value={formatMoney(stats?.revenue_this_month || 0) + ' DH'}
-            subtitle="Ce mois"
-            icon={CurrencyDollarIcon}
-            trend={getTrend(stats?.revenue_trend)}
-            trendValue={`${stats?.revenue_trend > 0 ? '+' : ''}${stats?.revenue_trend || 0}% vs mois dernier`}
-            color="primary"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <KPICard
             title="Devis créés"
             value={stats?.quotations_this_month || 0}
@@ -323,12 +314,12 @@ const DashboardPage = () => {
         </div>
 
         {/* ============ CHARTS ROW ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Chart */}
-          <Card className="lg:col-span-2">
+          {/* <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-neutral-800">
-                Évolution du chiffre d'affaires
+                Statistique
               </h2>
               <span className="text-sm text-neutral-500">6 derniers mois</span>
             </div>
@@ -370,6 +361,54 @@ const DashboardPage = () => {
               ) : (
                 <div className="flex items-center justify-center h-full text-neutral-400">
                   Aucune donnée disponible
+                </div>
+              )}
+            </div>
+          </Card> */}
+
+          {/* Work Types Bar Chart */}
+          <Card>
+            <h2 className="text-lg font-semibold text-neutral-800 mb-6">
+              Types de travaux
+            </h2>
+            <div className="h-64">
+              {stats?.work_type_distribution && stats.work_type_distribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={stats.work_type_distribution} 
+                    layout="vertical"
+                    margin={{ left: 0, right: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                    <XAxis 
+                      type="number" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#6b7280', fontSize: 11 }}
+                      width={90}
+                    />
+                    <Tooltip />
+                    <Bar 
+                      dataKey="count" 
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                    >
+                      {stats.work_type_distribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-neutral-400">
+                  Aucune donnée
                 </div>
               )}
             </div>
@@ -421,10 +460,12 @@ const DashboardPage = () => {
               ))}
             </div>
           </Card>
+
+
         </div>
 
         {/* ============ SECOND ROW ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Recent Quotations */}
           <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
@@ -459,57 +500,11 @@ const DashboardPage = () => {
             </div>
           </Card>
 
-          {/* Work Types Bar Chart */}
-          <Card>
-            <h2 className="text-lg font-semibold text-neutral-800 mb-6">
-              Types de travaux
-            </h2>
-            <div className="h-64">
-              {stats?.work_type_distribution && stats.work_type_distribution.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={stats.work_type_distribution} 
-                    layout="vertical"
-                    margin={{ left: 0, right: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
-                    <XAxis 
-                      type="number" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 11 }}
-                      width={90}
-                    />
-                    <Tooltip />
-                    <Bar 
-                      dataKey="count" 
-                      radius={[0, 4, 4, 0]}
-                      barSize={20}
-                    >
-                      {stats.work_type_distribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-neutral-400">
-                  Aucune donnée
-                </div>
-              )}
-            </div>
-          </Card>
+          
         </div>
 
         {/* ============ QUICK ACTIONS & INFO ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Quick Actions */}
           <Card>
             <h2 className="text-lg font-semibold text-neutral-800 mb-4">
@@ -554,85 +549,6 @@ const DashboardPage = () => {
               </Link>
             </div>
           </Card>
-
-          {/* Company Info or Alerts */}
-          {isProfessionnel && company ? (
-            <Card>
-              <h2 className="text-lg font-semibold text-neutral-800 mb-4">
-                Mon entreprise
-              </h2>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg">
-                  <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">
-                    <BuildingOfficeIcon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-neutral-800">{company.name}</p>
-                    <p className="text-sm text-neutral-500">{company.city || 'Ville non définie'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-neutral-50 rounded-lg">
-                    <p className="text-neutral-500">ICE</p>
-                    <p className="font-medium text-neutral-800">{company.ice || '—'}</p>
-                  </div>
-                  <div className="p-3 bg-neutral-50 rounded-lg">
-                    <p className="text-neutral-500">Téléphone</p>
-                    <p className="font-medium text-neutral-800">{company.phone || '—'}</p>
-                  </div>
-                </div>
-                <Link
-                  to="/company"
-                  className="block text-center py-2 text-primary hover:text-primary-dark font-medium text-sm"
-                >
-                  Modifier les informations →
-                </Link>
-              </div>
-            </Card>
-          ) : (
-            <Card>
-              <h2 className="text-lg font-semibold text-neutral-800 mb-4">
-                Résumé
-              </h2>
-              <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg mb-4">
-                <CalendarDaysIcon className="w-8 h-8 text-primary" />
-                <div>
-                  <p className="font-semibold text-neutral-800">
-                    {new Date().toLocaleDateString('fr-FR', { 
-                      weekday: 'long', 
-                      day: 'numeric', 
-                      month: 'long',
-                      year: 'numeric'
-                    })}
-                  </p>
-                  <p className="text-sm text-neutral-500">
-                    {stats?.pending || 0} devis en attente de réponse
-                  </p>
-                </div>
-              </div>
-              
-              {/* Alertes */}
-              <div className="space-y-2">
-                {stats?.expiring_soon > 0 && (
-                  <div className="flex items-center justify-between text-sm p-3 bg-orange-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <ExclamationTriangleIcon className="w-5 h-5 text-orange-600" />
-                      <span className="text-orange-800">Devis expirant bientôt</span>
-                    </div>
-                    <span className="font-semibold text-orange-600">{stats.expiring_soon}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-sm p-2 hover:bg-neutral-50 rounded">
-                  <span className="text-neutral-600">Total devis</span>
-                  <span className="font-semibold text-neutral-800">{stats?.total || 0}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm p-2 hover:bg-neutral-50 rounded">
-                  <span className="text-neutral-600">CA total (acceptés)</span>
-                  <span className="font-semibold text-green-600">{formatFullMoney(stats?.total_revenue || 0)}</span>
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </DashboardLayout>

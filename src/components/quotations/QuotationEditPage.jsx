@@ -89,7 +89,7 @@ const MATERIAL_RULES = {
     { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
     { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 1.50 },
     { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 5, unit: 'kg', unit_price: 8 },
+    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 8 },
   ],
   plafond_ba13: [
     { designation: 'Plaque BA13', quantity: 3, unit: 'unité', unit_price: 85 },
@@ -98,7 +98,7 @@ const MATERIAL_RULES = {
     { designation: 'Vis TTPC 25 mm', quantity: 70, unit: 'unité', unit_price: 0.15 },
     { designation: 'Vis TTPC 9 mm', quantity: 20, unit: 'unité', unit_price: 0.12 },
     { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 5, unit: 'kg', unit_price: 8 },
+    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 8 },
   ],
   cloison: [
     { designation: 'Plaque BA13', quantity: 6, unit: 'unité', unit_price: 85 },
@@ -109,7 +109,7 @@ const MATERIAL_RULES = {
     { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
     { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 1.50 },
     { designation: 'Bande à joint', quantity: 30, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 10, unit: 'kg', unit_price: 8 },
+    { designation: 'Enduit', quantity: 10, unit: 'sacs', unit_price: 8 },
   ],
   gaine_creuse: [
     { designation: 'Plaque BA13', quantity: 2, unit: 'unité', unit_price: 85 },
@@ -119,7 +119,7 @@ const MATERIAL_RULES = {
     { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
     { designation: 'Tige filetée + pivot + cheville béton', quantity: 10, unit: 'ensemble', unit_price: 8 },
     { designation: 'Bande à joint', quantity: 20, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 4, unit: 'kg', unit_price: 8 },
+    { designation: 'Enduit', quantity: 4, unit: 'sacs', unit_price: 8 },
   ],
 };
 
