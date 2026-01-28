@@ -256,14 +256,14 @@ const QuotationDetailPage = () => {
           <div className="flex flex-wrap gap-2">
             {quotation.status === 'draft' && (
               <>
-                <button
+                {/* <button
                   onClick={() => handleStatusChange('sent')}
                   disabled={actionLoading}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                 >
                   <PaperAirplaneIcon className="w-4 h-4" />
                   Envoyer
-                </button>
+                </button> */}
                 <Link
                   to={`/quotations/${id}/edit`}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"

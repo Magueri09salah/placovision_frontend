@@ -150,7 +150,7 @@ const QuotationEditPage = () => {
   // Step 2 & 3: Rooms with works
   const [rooms, setRooms] = useState([]);
 
-  // Calculated materials
+  // Calculated materials - Clé = "roomIndex-workIndex"
   const [calculatedMaterials, setCalculatedMaterials] = useState({});
 
   // ============ LOAD QUOTATION ============
@@ -169,7 +169,6 @@ const QuotationEditPage = () => {
           return;
         }
 
-        // Check if quotation can be edited
         if (quotation.status !== 'draft') {
           setLoadError('Ce devis ne peut plus être modifié car il n\'est plus en brouillon.');
           return;
@@ -195,13 +194,11 @@ const QuotationEditPage = () => {
             works: (room.works || []).map(work => ({
               work_type: work.work_type,
               surface: work.surface || 0,
-              // Store original items for reference
-              originalItems: work.items || [],
             })),
           }));
           setRooms(loadedRooms);
 
-          // Initialize calculated materials with existing items
+          // ✅ Initialize calculated materials with existing items from DB
           const initialMaterials = {};
           quotation.rooms.forEach((room, roomIndex) => {
             (room.works || []).forEach((work, workIndex) => {
@@ -214,8 +211,8 @@ const QuotationEditPage = () => {
                     quantity_calculated: item.quantity_calculated,
                     quantity_adjusted: item.quantity_adjusted,
                     unit: item.unit,
-                    unit_price: item.unit_price,
-                    total_ht: item.total_ht,
+                    unit_price: parseFloat(item.unit_price),
+                    total_ht: parseFloat(item.total_ht),
                     is_modified: item.is_modified,
                   })),
                   userModified: work.items.some(item => item.is_modified),
@@ -262,28 +259,43 @@ const QuotationEditPage = () => {
     });
   };
 
-  // Recalculate materials when rooms/works change (only for new works)
+  // ✅ Recalculate materials when rooms/works change
   useEffect(() => {
     if (loading) return;
 
-    const newMaterials = { ...calculatedMaterials };
+    const newMaterials = {};
     
     rooms.forEach((room, roomIndex) => {
       room.works.forEach((work, workIndex) => {
         const key = `${roomIndex}-${workIndex}`;
-        const existingMaterials = newMaterials[key];
+        const existingMaterials = calculatedMaterials[key];
         
-        // Only recalculate if no existing materials or surface changed significantly
         if (!existingMaterials) {
+          // Nouveau work
           newMaterials[key] = {
             items: calculateMaterialsForWork(work.work_type, work.surface || 0),
             userModified: false,
           };
         } else if (!existingMaterials.userModified) {
-          // Recalculate if user hasn't modified anything
+          // Pas modifié, recalculer
           newMaterials[key] = {
             items: calculateMaterialsForWork(work.work_type, work.surface || 0),
             userModified: false,
+          };
+        } else {
+          // Garder les modifications utilisateur
+          const newItems = calculateMaterialsForWork(work.work_type, work.surface || 0);
+          newMaterials[key] = {
+            ...existingMaterials,
+            items: existingMaterials.items.map((item, i) => {
+              if (item.is_modified) {
+                return {
+                  ...item,
+                  quantity_calculated: newItems[i]?.quantity_calculated || item.quantity_calculated,
+                };
+              }
+              return newItems[i] || item;
+            }),
           };
         }
       });
@@ -292,7 +304,7 @@ const QuotationEditPage = () => {
     setCalculatedMaterials(newMaterials);
   }, [rooms, loading]);
 
-  // Total calculation
+  // ✅ Total calculation
   const totals = useMemo(() => {
     let totalHt = 0;
     
@@ -339,59 +351,93 @@ const QuotationEditPage = () => {
 
   const removeRoom = (index) => {
     setRooms(prev => prev.filter((_, i) => i !== index));
-    // Clean up calculated materials for this room
-    const newMaterials = {};
-    Object.entries(calculatedMaterials).forEach(([key, value]) => {
-      const [roomIdx] = key.split('-').map(Number);
-      if (roomIdx < index) {
-        newMaterials[key] = value;
-      } else if (roomIdx > index) {
-        newMaterials[`${roomIdx - 1}-${key.split('-')[1]}`] = value;
-      }
+    // ✅ Nettoyer et réindexer
+    setCalculatedMaterials(prev => {
+      const newMaterials = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const [roomIdx, workIdx] = key.split('-').map(Number);
+        if (roomIdx < index) {
+          newMaterials[key] = value;
+        } else if (roomIdx > index) {
+          newMaterials[`${roomIdx - 1}-${workIdx}`] = value;
+        }
+      });
+      return newMaterials;
     });
-    setCalculatedMaterials(newMaterials);
   };
 
   const addWorkToRoom = (roomIndex, workType) => {
-    setRooms(prev => prev.map((room, i) => {
-      if (i !== roomIndex) return room;
-      return {
-        ...room,
-        works: [
-          ...room.works,
-          { work_type: workType, surface: '' },
-        ],
-      };
-    }));
-  };
+  setRooms(prev => prev.map((room, i) => {
+    if (i !== roomIndex) return room;
+    
+    // For "Gaine creuse", set height to 1 so surface = width × 1 = width
+    // For other types, keep height empty
+    const initialHeight = workType === 'gaine_creuse' ? 1 : '';
+    
+    return {
+      ...room,
+      works: [
+        ...room.works,
+        { 
+          work_type: workType, 
+          width: '', 
+          height: initialHeight,
+          surface: 0 
+        },
+      ],
+    };
+  }));
+};
 
-  const updateWorkSurface = (roomIndex, workIndex, surface) => {
-    setRooms(prev => prev.map((room, i) => {
+  // const updateWorkSurface = (roomIndex, workIndex, surface) => {
+  //   setRooms(prev => prev.map((room, i) => {
+  //     if (i !== roomIndex) return room;
+  //     return {
+  //       ...room,
+  //       works: room.works.map((work, j) => {
+  //         if (j !== workIndex) return work;
+  //         return { ...work, surface: parseFloat(surface) || 0 };
+  //       }),
+  //     };
+  //   }));
+  // };
+
+   const updateWorkDimension = (roomIndex, workIndex, field, value) => {
+  setRooms(prev =>
+    prev.map((room, i) => {
       if (i !== roomIndex) return room;
+
       return {
         ...room,
         works: room.works.map((work, j) => {
           if (j !== workIndex) return work;
-          return { ...work, surface: parseFloat(surface) || 0 };
+
+          const updatedWork = {
+            ...work,
+            [field]: parseFloat(value) || 0,
+          };
+
+          // For "Gaine creuse", surface is just the width (length in ml)
+          if (work.work_type === 'gaine_creuse') {
+            const width = updatedWork.width || 0;
+            return {
+              ...updatedWork,
+              surface: width, // For gaine creuse, surface = length in ml
+            };
+          } else {
+            // For other work types, surface = width × height
+            const width = updatedWork.width || 0;
+            const height = updatedWork.height || 0;
+            return {
+              ...updatedWork,
+              surface: Math.round(width * height * 100) / 100, // m²
+            };
+          }
         }),
       };
-    }));
-
-    // Reset calculated materials for this work to recalculate
-    const key = `${roomIndex}-${workIndex}`;
-    if (calculatedMaterials[key] && !calculatedMaterials[key].userModified) {
-      setCalculatedMaterials(prev => ({
-        ...prev,
-        [key]: {
-          items: calculateMaterialsForWork(
-            rooms[roomIndex]?.works[workIndex]?.work_type,
-            parseFloat(surface) || 0
-          ),
-          userModified: false,
-        },
-      }));
-    }
-  };
+    })
+  );
+};
 
   const removeWork = (roomIndex, workIndex) => {
     setRooms(prev => prev.map((room, i) => {
@@ -402,21 +448,26 @@ const QuotationEditPage = () => {
       };
     }));
 
-    // Clean up calculated materials
-    const keyToRemove = `${roomIndex}-${workIndex}`;
-    const newMaterials = {};
-    Object.entries(calculatedMaterials).forEach(([key, value]) => {
-      if (key === keyToRemove) return;
-      const [rIdx, wIdx] = key.split('-').map(Number);
-      if (rIdx === roomIndex && wIdx > workIndex) {
-        newMaterials[`${rIdx}-${wIdx - 1}`] = value;
-      } else {
-        newMaterials[key] = value;
-      }
+    // ✅ Nettoyer et réindexer
+    setCalculatedMaterials(prev => {
+      const newMaterials = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const [rIdx, wIdx] = key.split('-').map(Number);
+        if (rIdx === roomIndex) {
+          if (wIdx < workIndex) {
+            newMaterials[key] = value;
+          } else if (wIdx > workIndex) {
+            newMaterials[`${rIdx}-${wIdx - 1}`] = value;
+          }
+        } else {
+          newMaterials[key] = value;
+        }
+      });
+      return newMaterials;
     });
-    setCalculatedMaterials(newMaterials);
   };
 
+  // ✅ Mise à jour de la quantité
   const updateMaterialQuantity = (materialKey, itemIndex, newQuantity) => {
     setCalculatedMaterials(prev => ({
       ...prev,
@@ -436,22 +487,30 @@ const QuotationEditPage = () => {
     }));
   };
 
+  // ✅ Réinitialiser la quantité
   const resetMaterialQuantity = (materialKey, itemIndex) => {
-    setCalculatedMaterials(prev => ({
-      ...prev,
-      [materialKey]: {
-        ...prev[materialKey],
-        items: prev[materialKey].items.map((item, i) => {
-          if (i !== itemIndex) return item;
-          return {
-            ...item,
-            quantity_adjusted: item.quantity_calculated,
-            total_ht: item.quantity_calculated * item.unit_price,
-            is_modified: false,
-          };
-        }),
-      },
-    }));
+    setCalculatedMaterials(prev => {
+      const updatedItems = prev[materialKey].items.map((item, i) => {
+        if (i !== itemIndex) return item;
+        return {
+          ...item,
+          quantity_adjusted: item.quantity_calculated,
+          total_ht: item.quantity_calculated * item.unit_price,
+          is_modified: false,
+        };
+      });
+      
+      const stillModified = updatedItems.some(item => item.is_modified);
+      
+      return {
+        ...prev,
+        [materialKey]: {
+          ...prev[materialKey],
+          userModified: stillModified,
+          items: updatedItems,
+        },
+      };
+    });
   };
 
   // ============ VALIDATION ============
@@ -517,13 +576,16 @@ const QuotationEditPage = () => {
     }
   };
 
-  // ============ SUBMIT ============
+  // ============ SUBMIT - CORRIGÉ ============
 
   const handleSubmit = async () => {
+    console.log('handleSubmit appelé');
+    
     setSaving(true);
     setFormError(null);
 
     try {
+      // ✅ Construire le payload avec les items
       const payload = {
         client_name: clientInfo.client_name,
         client_email: clientInfo.client_email || null,
@@ -531,17 +593,35 @@ const QuotationEditPage = () => {
         site_address: clientInfo.site_address,
         site_city: clientInfo.site_city,
         site_postal_code: clientInfo.site_postal_code || null,
-        rooms: rooms.map(room => ({
+        rooms: rooms.map((room, roomIndex) => ({
           room_type: room.room_type,
           room_name: room.room_name,
-          works: room.works.map(work => ({
-            work_type: work.work_type,
-            surface: parseFloat(work.surface) || 0,
-          })),
+          works: room.works.map((work, workIndex) => {
+            // ✅ Utiliser la bonne clé
+            const materialKey = `${roomIndex}-${workIndex}`;
+            const materials = calculatedMaterials[materialKey]?.items || [];
+            
+            return {
+              work_type: work.work_type,
+              surface: parseFloat(work.surface) || 0,
+              // ✅ Inclure les items avec leurs quantités ajustées
+              items: materials.map(item => ({
+                designation: item.designation,
+                quantity_calculated: item.quantity_calculated,
+                quantity_adjusted: item.quantity_adjusted,
+                unit: item.unit,
+                unit_price: item.unit_price,
+              })),
+            };
+          }),
         })),
       };
 
+      console.log('Payload update:', JSON.stringify(payload, null, 2));
+
       await quotationAPI.update(id, payload);
+      
+      console.log('Mise à jour réussie');
       navigate(`/quotations/${id}`);
     } catch (error) {
       console.error('Erreur:', error);
@@ -856,17 +936,61 @@ const QuotationEditPage = () => {
                                 <p className="font-medium text-gray-800">{workTypeInfo?.label}</p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min="0.1"
-                                  step="0.1"
-                                  value={work.surface || ''}
-                                  onChange={(e) => updateWorkSurface(roomIndex, workIndex, e.target.value)}
-                                  placeholder="Surface"
-                                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                />
-                                <span className="text-gray-600 font-medium w-8">{workTypeInfo?.unitLabel}</span>
+                                {work.work_type === 'gaine_creuse' ? (
+                                  // Single input for "Gaine creuse" (length in ml)
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      placeholder="Longueur"
+                                      value={work.width || ''}
+                                      onChange={(e) =>
+                                        updateWorkDimension(roomIndex, workIndex, 'width', e.target.value)
+                                      }
+                                      className="w-24 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
+                                    />
+                                    <span className="text-gray-600 text-sm">ml</span>
+                                  </div>
+                                ) : (
+                                  // Two inputs for other work types (width × height in meters)
+                                  <>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      placeholder="L"
+                                      value={work.width || ''}
+                                      onChange={(e) =>
+                                        updateWorkDimension(roomIndex, workIndex, 'width', e.target.value)
+                                      }
+                                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
+                                    />
+                                    <span className="text-gray-500">×</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      placeholder="H"
+                                      value={work.height || ''}
+                                      onChange={(e) =>
+                                        updateWorkDimension(roomIndex, workIndex, 'height', e.target.value)
+                                      }
+                                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
+                                    />
+                                    <span className="text-gray-600 text-sm">m</span>
+                                  </>
+                                )}
                               </div>
+                              {work.surface > 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {work.work_type === 'gaine_creuse' ? (
+                                    <>Longueur : <span className="font-medium">{work.surface} ml</span></>
+                                  ) : (
+                                    <>Surface : <span className="font-medium">{work.surface} m²</span></>
+                                  )}
+                                </p>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => removeWork(roomIndex, workIndex)}
@@ -936,69 +1060,73 @@ const QuotationEditPage = () => {
                             </h3>
                           </div>
 
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="bg-gray-50">
-                                  <th className="text-left py-2 px-3 font-medium text-gray-600">Matériau</th>
-                                  <th className="text-center py-2 px-3 font-medium text-gray-600">Qté calc.</th>
-                                  <th className="text-center py-2 px-3 font-medium text-gray-600">Qté ajustée</th>
-                                  <th className="text-center py-2 px-3 font-medium text-gray-600">Unité</th>
-                                  <th className="text-right py-2 px-3 font-medium text-gray-600">P.U.</th>
-                                  <th className="text-right py-2 px-3 font-medium text-gray-600">Total</th>
-                                  <th className="w-12"></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {materials.map((item, itemIndex) => (
-                                  <tr
-                                    key={itemIndex}
-                                    className={`border-b border-gray-100 ${item.is_modified ? 'bg-yellow-50' : ''}`}
-                                  >
-                                    <td className="py-2 px-3 text-gray-900">
-                                      {item.designation}
-                                      {item.is_modified && (
-                                        <span className="ml-2 text-xs text-yellow-600">(modifié)</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-center text-gray-500">
-                                      {item.quantity_calculated}
-                                    </td>
-                                    <td className="py-2 px-3 text-center">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={item.quantity_adjusted}
-                                        onChange={(e) => updateMaterialQuantity(materialKey, itemIndex, parseFloat(e.target.value) || 0)}
-                                        className={`w-20 px-2 py-1 border rounded text-center text-sm ${
-                                          item.is_modified ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'
-                                        }`}
-                                      />
-                                    </td>
-                                    <td className="py-2 px-3 text-center text-gray-600">{item.unit}</td>
-                                    <td className="py-2 px-3 text-right text-gray-600">
-                                      {item.unit_price.toFixed(2)} DH
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-medium text-gray-800">
-                                      {(item.quantity_adjusted * item.unit_price).toFixed(2)} DH
-                                    </td>
-                                    <td className="py-2 px-3 text-center">
-                                      {item.is_modified && (
-                                        <button
-                                          type="button"
-                                          onClick={() => resetMaterialQuantity(materialKey, itemIndex)}
-                                          className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                                          title="Réinitialiser"
-                                        >
-                                          <ArrowPathIcon className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                    </td>
+                          {materials.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="text-left py-2 px-3 font-medium text-gray-600">Matériau</th>
+                                    <th className="text-center py-2 px-3 font-medium text-gray-600">Qté calc.</th>
+                                    <th className="text-center py-2 px-3 font-medium text-gray-600">Qté ajustée</th>
+                                    <th className="text-center py-2 px-3 font-medium text-gray-600">Unité</th>
+                                    <th className="text-right py-2 px-3 font-medium text-gray-600">P.U.</th>
+                                    <th className="text-right py-2 px-3 font-medium text-gray-600">Total</th>
+                                    <th className="w-12"></th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                                </thead>
+                                <tbody>
+                                  {materials.map((item, itemIndex) => (
+                                    <tr
+                                      key={itemIndex}
+                                      className={`border-b border-gray-100 ${item.is_modified ? 'bg-yellow-50' : ''}`}
+                                    >
+                                      <td className="py-2 px-3 text-gray-900">
+                                        {item.designation}
+                                        {item.is_modified && (
+                                          <span className="ml-2 text-xs text-yellow-600">(modifié)</span>
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-center text-gray-500">
+                                        {item.quantity_calculated}
+                                      </td>
+                                      <td className="py-2 px-3 text-center">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={item.quantity_adjusted}
+                                          onChange={(e) => updateMaterialQuantity(materialKey, itemIndex, parseFloat(e.target.value) || 0)}
+                                          className={`w-20 px-2 py-1 border rounded text-center text-sm ${
+                                            item.is_modified ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'
+                                          }`}
+                                        />
+                                      </td>
+                                      <td className="py-2 px-3 text-center text-gray-600">{item.unit}</td>
+                                      <td className="py-2 px-3 text-right text-gray-600">
+                                        {item.unit_price.toFixed(2)} DH
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-medium text-gray-800">
+                                        {(item.quantity_adjusted * item.unit_price).toFixed(2)} DH
+                                      </td>
+                                      <td className="py-2 px-3 text-center">
+                                        {item.is_modified && (
+                                          <button
+                                            type="button"
+                                            onClick={() => resetMaterialQuantity(materialKey, itemIndex)}
+                                            className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                                            title="Réinitialiser"
+                                          >
+                                            <ArrowPathIcon className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 italic">Aucun matériau calculé</p>
+                          )}
                         </div>
                       );
                     })}
