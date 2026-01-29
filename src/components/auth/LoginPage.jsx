@@ -69,48 +69,9 @@ const LoginPage = () => {
   return (
     <AuthLayout 
       title="Portail Client" 
-      subtitle="Connectez-vous à votre espace"
+      // subtitle="Connectez-vous à votre espace"
     >
-        <div className="space-y-3 mb-6">
-        <GoogleLogin
-            onSuccess={async (credentialResponse) => {
-            try {
-                const res = await api.post('/auth/google', {
-                google_token: credentialResponse.credential,
-                });
-
-                if (res.data.action === 'login') {
-                    await loginWithToken(res.data.data.user, res.data.data.token);
-                    navigate('/dashboard');
-                }
-
-                if (res.data.action === 'choose_account_type') {
-                navigate('/register', {
-                    state: {
-                    googleData: res.data.data.google_data,
-                    },
-                });
-                }
-            } catch (e) {
-                setAlert({
-                type: 'error',
-                message: 'Connexion Google échouée',
-                });
-            }
-            }}
-            onError={() => {
-            setAlert({
-                type: 'error',
-                message: 'Connexion Google annulée',
-            });
-            }}
-        />
-
-            <div className="relative text-center text-sm text-neutral-400">
-                <span className="bg-white px-2">ou</span>
-                <div className="absolute left-0 right-0 top-1/2 border-t" />
-            </div>
-        </div>
+        
 
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -123,7 +84,7 @@ const LoginPage = () => {
         )}
 
         <Input
-          label="Email"
+          label="Identifiant client"
           type="email"
           name="email"
           value={formData.email}
@@ -168,6 +129,53 @@ const LoginPage = () => {
         >
           Connexion
         </Button>
+
+        <div className="space-y-3 mb-6">
+
+          <div className="relative my-6 flex items-center">
+            <div className="flex-grow border-t border-neutral-300"></div>
+
+            <span className="mx-3 text-sm text-neutral-400 bg-white px-2">
+              ou
+            </span>
+
+            <div className="flex-grow border-t border-neutral-300"></div>
+          </div>
+
+          <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+              try {
+                  const res = await api.post('/auth/google', {
+                  google_token: credentialResponse.credential,
+                  });
+
+                  if (res.data.action === 'login') {
+                      await loginWithToken(res.data.data.user, res.data.data.token);
+                      navigate('/dashboard');
+                  }
+
+                  if (res.data.action === 'choose_account_type') {
+                  navigate('/register', {
+                      state: {
+                      googleData: res.data.data.google_data,
+                      },
+                  });
+                  }
+              } catch (e) {
+                  setAlert({
+                  type: 'error',
+                  message: 'Connexion Google échouée',
+                  });
+              }
+              }}
+              onError={() => {
+              setAlert({
+                  type: 'error',
+                  message: 'Connexion Google annulée',
+              });
+              }}
+          />
+        </div>
 
         <p className="text-center text-sm text-neutral-600 mt-6">
           Pas de compte ?{' '}

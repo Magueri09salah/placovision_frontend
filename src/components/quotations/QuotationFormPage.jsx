@@ -123,6 +123,54 @@ const MATERIAL_RULES = {
   ],
 };
 
+const KG_PER_SAC = 25;
+const convertKgToSacs = (kg) => {
+  if (kg <= 0) return 0;
+  return Math.ceil(kg / KG_PER_SAC);
+};
+
+function convertBandeAJoint(item) {
+  if (item.designation !== 'Bande à joint' || item.unit !== 'm') {
+    return item;
+  }
+
+  const quantityM = item.quantity;
+
+  let rlxQuantity;
+  let designation;
+
+  if (quantityM <= 150) {
+    rlxQuantity = 1;
+    designation = 'Bande à joint 150';
+  } else if (quantityM <= 300) {
+    rlxQuantity = 1;
+    designation = 'Bande à joint 300';
+  } else {
+    rlxQuantity = Math.ceil(quantityM / 300);
+    rlxQuantity >= 2 ? designation = 'Bande à joint 300'  : designation ='Bande à joint 150' ;
+  }
+
+  return {
+    ...item,
+    designation,
+    quantity: rlxQuantity,
+    unit: 'rlx',
+  };
+}
+
+
+const PLAQUE_BY_ROOM = {
+  salon_sejour: 'Plaque BA13 standard',
+  chambre: 'Plaque BA13 standard',
+  cuisine: 'Plaque Hydro',
+  salle_de_bain: 'Plaque Hydro',
+  wc: 'Plaque Hydro',
+  bureau: 'Plaque BA13 standard',
+  garage: 'Plaque Feu',
+  exterieur: 'Plaque OutGuard',
+  autre: 'Plaque BA13 standard',
+};
+
 // ============ COMPOSANT PRINCIPAL ============
 
 const QuotationFormPage = () => {
@@ -151,51 +199,85 @@ const QuotationFormPage = () => {
 
   // ============ CALCULATIONS ============
 
-  const calculateMaterialsForWork = (workType, surface) => {
+  const calculateMaterialsForWork = (workType, surface, roomType) => {
     const rules = MATERIAL_RULES[workType] || [];
     const baseSurface = 10;
     const coefficient = surface / baseSurface;
 
     return rules.map((rule, index) => {
-      const calculatedQty = Math.ceil(rule.quantity * coefficient);
-      return {
+      let designation = rule.designation;
+      let calculatedQty = rule.quantity * coefficient;
+      let unit = rule.unit;
+      let unitPrice = rule.unit_price;
+
+      // ✅ Replace the plaque based on roomType
+      if (rule.designation.includes('Plaque')) {
+        designation = PLAQUE_BY_ROOM[roomType] || rule.designation;
+      }
+
+      // 🟢 Enduit conversion: kg → sacs
+      if (designation.toLowerCase().includes('enduit')) {
+        calculatedQty = convertKgToSacs(calculatedQty);
+        unit = 'sacs';
+      } else {
+        calculatedQty = Math.ceil(calculatedQty);
+      }
+
+      // const calculatedQty = Math.ceil(rule.quantity * coefficient);
+      let finalItem = {
         id: `${workType}-${index}`,
-        designation: rule.designation,
+        designation,
         quantity_calculated: calculatedQty,
         quantity_adjusted: calculatedQty,
-        unit: rule.unit,
-        unit_price: rule.unit_price,
-        total_ht: calculatedQty * rule.unit_price,
+        unit,
+        unit_price: unitPrice,
+        total_ht: calculatedQty * unitPrice,
+        is_modified: false,
+      };
+
+      finalItem = convertBandeAJoint({
+        designation: finalItem.designation,
+        quantity: finalItem.quantity_calculated,
+        unit: finalItem.unit,
+        unit_price: finalItem.unit_price,
+      });
+
+      return {
+        ...finalItem,
+        quantity_calculated: finalItem.quantity,
+        quantity_adjusted: finalItem.quantity,
+        total_ht: finalItem.quantity * finalItem.unit_price,
         is_modified: false,
       };
     });
   };
 
+
   // ✅ Recalculate materials when rooms/works change
   useEffect(() => {
     const newMaterials = {};
-    
+
     rooms.forEach((room, roomIndex) => {
       room.works.forEach((work, workIndex) => {
         // ✅ Clé unique par room + work
         const key = `${roomIndex}-${workIndex}`;
         const existingMaterials = calculatedMaterials[key];
-        
+
         if (!existingMaterials) {
           // Nouveau work, calculer les matériaux
           newMaterials[key] = {
-            items: calculateMaterialsForWork(work.work_type, work.surface || 0),
+            items: calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type),
             userModified: false,
           };
         } else if (!existingMaterials.userModified) {
           // Work existant mais pas modifié par l'utilisateur, recalculer
           newMaterials[key] = {
-            items: calculateMaterialsForWork(work.work_type, work.surface || 0),
+            items: calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type),
             userModified: false,
           };
         } else {
           // Work modifié par l'utilisateur, garder les modifications mais mettre à jour quantity_calculated
-          const newItems = calculateMaterialsForWork(work.work_type, work.surface || 0);
+          const newItems = calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type);
           newMaterials[key] = {
             ...existingMaterials,
             items: existingMaterials.items.map((item, i) => {
@@ -213,14 +295,14 @@ const QuotationFormPage = () => {
         }
       });
     });
-    
+
     setCalculatedMaterials(newMaterials);
   }, [rooms]);
 
   // ✅ Total calculation
   const totals = useMemo(() => {
     let totalHt = 0;
-    
+
     Object.values(calculatedMaterials).forEach(({ items }) => {
       if (items) {
         items.forEach(item => {
@@ -228,11 +310,11 @@ const QuotationFormPage = () => {
         });
       }
     });
-    
+
     const tvaRate = 20;
     const totalTva = totalHt * (tvaRate / 100);
     const totalTtc = totalHt + totalTva;
-    
+
     return {
       total_ht: Math.round(totalHt * 100) / 100,
       total_tva: Math.round(totalTva * 100) / 100,
@@ -282,27 +364,27 @@ const QuotationFormPage = () => {
   };
 
   const addWorkToRoom = (roomIndex, workType) => {
-  setRooms(prev => prev.map((room, i) => {
-    if (i !== roomIndex) return room;
-    
-    // For "Gaine creuse", set height to 1 so surface = width × 1 = width
-    // For other types, keep height empty
-    const initialHeight = workType === 'gaine_creuse' ? 1 : '';
-    
-    return {
-      ...room,
-      works: [
-        ...room.works,
-        { 
-          work_type: workType, 
-          width: '', 
-          height: initialHeight,
-          surface: 0 
-        },
-      ],
-    };
-  }));
-};
+    setRooms(prev => prev.map((room, i) => {
+      if (i !== roomIndex) return room;
+
+      // For "Gaine creuse", set height to 1 so surface = width × 1 = width
+      // For other types, keep height empty
+      const initialHeight = workType === 'gaine_creuse' ? 1 : '';
+
+      return {
+        ...room,
+        works: [
+          ...room.works,
+          {
+            work_type: workType,
+            width: '',
+            height: initialHeight,
+            surface: 0
+          },
+        ],
+      };
+    }));
+  };
 
   // const updateWorkSurface = (roomIndex, workIndex, surface) => {
   //   setRooms(prev => prev.map((room, i) => {
@@ -317,42 +399,42 @@ const QuotationFormPage = () => {
   //   }));
   // };
 
-    const updateWorkDimension = (roomIndex, workIndex, field, value) => {
-  setRooms(prev =>
-    prev.map((room, i) => {
-      if (i !== roomIndex) return room;
+  const updateWorkDimension = (roomIndex, workIndex, field, value) => {
+    setRooms(prev =>
+      prev.map((room, i) => {
+        if (i !== roomIndex) return room;
 
-      return {
-        ...room,
-        works: room.works.map((work, j) => {
-          if (j !== workIndex) return work;
+        return {
+          ...room,
+          works: room.works.map((work, j) => {
+            if (j !== workIndex) return work;
 
-          const updatedWork = {
-            ...work,
-            [field]: parseFloat(value) || 0,
-          };
-
-          // For "Gaine creuse", surface is just the width (length in ml)
-          if (work.work_type === 'gaine_creuse') {
-            const width = updatedWork.width || 0;
-            return {
-              ...updatedWork,
-              surface: width, // For gaine creuse, surface = length in ml
+            const updatedWork = {
+              ...work,
+              [field]: parseFloat(value) || 0,
             };
-          } else {
-            // For other work types, surface = width × height
-            const width = updatedWork.width || 0;
-            const height = updatedWork.height || 0;
-            return {
-              ...updatedWork,
-              surface: Math.round(width * height * 100) / 100, // m²
-            };
-          }
-        }),
-      };
-    })
-  );
-};
+
+            // For "Gaine creuse", surface is just the width (length in ml)
+            if (work.work_type === 'gaine_creuse') {
+              const width = updatedWork.width || 0;
+              return {
+                ...updatedWork,
+                surface: width, // For gaine creuse, surface = length in ml
+              };
+            } else {
+              // For other work types, surface = width × height
+              const width = updatedWork.width || 0;
+              const height = updatedWork.height || 0;
+              return {
+                ...updatedWork,
+                surface: Math.round(width * height * 100) / 100, // m²
+              };
+            }
+          }),
+        };
+      })
+    );
+  };
 
 
   const removeWork = (roomIndex, workIndex) => {
@@ -415,10 +497,10 @@ const QuotationFormPage = () => {
           is_modified: false,
         };
       });
-      
+
       // Vérifier si encore des items modifiés
       const stillModified = updatedItems.some(item => item.is_modified);
-      
+
       return {
         ...prev,
         [materialKey]: {
@@ -459,15 +541,15 @@ const QuotationFormPage = () => {
       setFormError('Veuillez ajouter au moins un travail.');
       return false;
     }
-    
-    const hasValidSurfaces = rooms.every(room => 
+
+    const hasValidSurfaces = rooms.every(room =>
       room.works.every(work => work.surface > 0)
     );
     if (!hasValidSurfaces) {
       setFormError('Veuillez renseigner toutes les surfaces.');
       return false;
     }
-    
+
     setFormError(null);
     return true;
   };
@@ -476,7 +558,7 @@ const QuotationFormPage = () => {
 
   const handleNext = () => {
     setFormError(null);
-    
+
     if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
     } else if (currentStep === 2 && validateStep2()) {
@@ -497,7 +579,7 @@ const QuotationFormPage = () => {
 
   const handleSubmit = async () => {
     console.log('handleSubmit appelé');
-    
+
     setSaving(true);
     setFormError(null);
 
@@ -516,7 +598,7 @@ const QuotationFormPage = () => {
             // ✅ Utiliser la bonne clé
             const materialKey = `${roomIndex}-${workIndex}`;
             const materials = calculatedMaterials[materialKey]?.items || [];
-            
+
             return {
               work_type: work.work_type,
               surface: parseFloat(work.surface) || 0,
@@ -534,11 +616,11 @@ const QuotationFormPage = () => {
       };
 
       console.log('Payload:', JSON.stringify(payload, null, 2));
-      
+
       const response = await quotationAPI.create(payload);
-      
+
       console.log('Réponse:', response.data);
-      
+
       if (response.data?.data?.id) {
         navigate(`/quotations/${response.data.data.id}`);
       } else {
@@ -546,7 +628,7 @@ const QuotationFormPage = () => {
       }
     } catch (error) {
       console.error('Erreur complète:', error);
-      
+
       if (error.response?.status === 422) {
         setErrors(error.response.data.errors || {});
         setFormError('Veuillez corriger les erreurs du formulaire.');
@@ -586,11 +668,10 @@ const QuotationFormPage = () => {
                 <div key={step.id} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                        currentStep >= step.id
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${currentStep >= step.id
                           ? 'bg-red-700 text-white'
                           : 'bg-gray-200 text-gray-500'
-                      }`}
+                        }`}
                     >
                       {currentStep > step.id ? (
                         <CheckIcon className="w-5 h-5" />
@@ -599,18 +680,16 @@ const QuotationFormPage = () => {
                       )}
                     </div>
                     <span
-                      className={`mt-2 text-xs font-medium ${
-                        currentStep >= step.id ? 'text-red-700' : 'text-gray-500'
-                      }`}
+                      className={`mt-2 text-xs font-medium ${currentStep >= step.id ? 'text-red-700' : 'text-gray-500'
+                        }`}
                     >
                       {step.name}
                     </span>
                   </div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`h-1 flex-1 mx-2 rounded ${
-                        currentStep > step.id ? 'bg-red-700' : 'bg-gray-200'
-                      }`}
+                      className={`h-1 flex-1 mx-2 rounded ${currentStep > step.id ? 'bg-red-700' : 'bg-gray-200'
+                        }`}
                     />
                   )}
                 </div>
@@ -642,9 +721,8 @@ const QuotationFormPage = () => {
                       value={clientInfo.client_name}
                       onChange={handleClientChange}
                       placeholder="Entrez le nom du client"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                        errors.client_name ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${errors.client_name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.client_name && <p className="mt-1 text-sm text-red-500">{errors.client_name}</p>}
                   </div>
@@ -656,9 +734,8 @@ const QuotationFormPage = () => {
                       value={clientInfo.client_email}
                       onChange={handleClientChange}
                       placeholder="email@exemple.com"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                        errors.client_email ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${errors.client_email ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.client_email && <p className="mt-1 text-sm text-red-500">{errors.client_email}</p>}
                   </div>
@@ -689,9 +766,8 @@ const QuotationFormPage = () => {
                       value={clientInfo.site_address}
                       onChange={handleClientChange}
                       placeholder="Entrez l'adresse complète"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                        errors.site_address ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${errors.site_address ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.site_address && <p className="mt-1 text-sm text-red-500">{errors.site_address}</p>}
                   </div>
@@ -705,9 +781,8 @@ const QuotationFormPage = () => {
                       value={clientInfo.site_city}
                       onChange={handleClientChange}
                       placeholder="Casablanca"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                        errors.site_city ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${errors.site_city ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.site_city && <p className="mt-1 text-sm text-red-500">{errors.site_city}</p>}
                   </div>
@@ -789,7 +864,7 @@ const QuotationFormPage = () => {
             <div className="space-y-6">
               {rooms.map((room, roomIndex) => {
                 const roomTypeInfo = ROOM_TYPES.find(r => r.value === room.room_type);
-                
+
                 return (
                   <div key={roomIndex} className="bg-white rounded-lg shadow p-6">
                     <div className="flex items-center gap-3 mb-6">
@@ -807,11 +882,10 @@ const QuotationFormPage = () => {
                             type="button"
                             onClick={() => !isAdded && addWorkToRoom(roomIndex, workType.value)}
                             disabled={isAdded}
-                            className={`p-3 rounded-lg border-2 text-center transition-all ${
-                              isAdded
+                            className={`p-3 rounded-lg border-2 text-center transition-all ${isAdded
                                 ? 'border-green-500 bg-green-50 text-green-700'
                                 : 'border-gray-200 hover:border-red-500 hover:bg-red-50'
-                            }`}
+                              }`}
                           >
                             <span className="text-xl mb-1 block">{workType.icon}</span>
                             <span className="text-xs font-medium">{workType.label}</span>
@@ -831,7 +905,7 @@ const QuotationFormPage = () => {
                               <div className="flex-1">
                                 <p className="font-medium text-gray-800">{workTypeInfo?.label}</p>
                               </div>
-                              
+
                               <div className="flex items-center gap-2">
                                 {work.work_type === 'gaine_creuse' ? (
                                   // Single input for "Gaine creuse" (length in ml)
@@ -936,7 +1010,7 @@ const QuotationFormPage = () => {
               {/* Materials by Room */}
               {rooms.map((room, roomIndex) => {
                 const roomTypeInfo = ROOM_TYPES.find(r => r.value === room.room_type);
-                
+
                 return (
                   <div key={roomIndex} className="bg-white rounded-lg shadow p-6">
                     <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-3">
@@ -994,9 +1068,8 @@ const QuotationFormPage = () => {
                                           min="0"
                                           value={item.quantity_adjusted}
                                           onChange={(e) => updateMaterialQuantity(materialKey, itemIndex, parseFloat(e.target.value) || 0)}
-                                          className={`w-20 px-2 py-1 border rounded text-center text-sm ${
-                                            item.is_modified ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'
-                                          }`}
+                                          className={`w-20 px-2 py-1 border rounded text-center text-sm ${item.is_modified ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'
+                                            }`}
                                         />
                                       </td>
                                       <td className="py-2 px-3 text-center text-gray-600">{item.unit}</td>
