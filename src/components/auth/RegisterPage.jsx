@@ -56,7 +56,8 @@ const PasswordStrengthIndicator = ({ password }) => {
 const RegisterPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { register } = useAuth();
+  // ✅ Ajouter loginWithToken du contexte
+  const { register, loginWithToken } = useAuth();
 
   const googleData = location.state?.googleData;
   const isGoogleSignup = !!googleData;
@@ -85,7 +86,6 @@ const RegisterPage = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
-    // Afficher l'indicateur de force du mot de passe
     if (name === 'password') {
       setShowPasswordStrength(value.length > 0);
     }
@@ -99,62 +99,44 @@ const RegisterPage = () => {
   const validateStep1 = () => {
     const newErrors = {};
 
-    // Prénom
     if (!formData.first_name.trim()) {
       newErrors.first_name = 'Le prénom est obligatoire';
     } else if (formData.first_name.length < 2) {
       newErrors.first_name = 'Le prénom doit contenir au moins 2 caractères';
     }
 
-    // Nom
     if (!formData.last_name.trim()) {
       newErrors.last_name = 'Le nom est obligatoire';
     } else if (formData.last_name.length < 2) {
       newErrors.last_name = 'Le nom doit contenir au moins 2 caractères';
     }
 
-    // Email
     if (!formData.email) {
       newErrors.email = 'L\'adresse email est obligatoire';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Veuillez entrer une adresse email valide';
     }
 
-    // Téléphone (optionnel mais si rempli, doit être valide)
     if (formData.phone && !/^[\d\s+()-]{8,20}$/.test(formData.phone)) {
       newErrors.phone = 'Numéro de téléphone invalide';
     }
 
-    // Mot de passe (seulement pour inscription normale)
     if (!isGoogleSignup) {
       if (!formData.password) {
         newErrors.password = 'Le mot de passe est obligatoire';
       } else {
-        // Vérifications détaillées
         const passwordErrors = [];
-
-        if (formData.password.length < 8) {
-          passwordErrors.push('au moins 8 caractères');
-        }
-        if (!/[A-Z]/.test(formData.password)) {
-          passwordErrors.push('une lettre majuscule');
-        }
-        if (!/[a-z]/.test(formData.password)) {
-          passwordErrors.push('une lettre minuscule');
-        }
-        if (!/[0-9]/.test(formData.password)) {
-          passwordErrors.push('un chiffre');
-        }
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-          passwordErrors.push('un caractère spécial');
-        }
+        if (formData.password.length < 8) passwordErrors.push('au moins 8 caractères');
+        if (!/[A-Z]/.test(formData.password)) passwordErrors.push('une lettre majuscule');
+        if (!/[a-z]/.test(formData.password)) passwordErrors.push('une lettre minuscule');
+        if (!/[0-9]/.test(formData.password)) passwordErrors.push('un chiffre');
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) passwordErrors.push('un caractère spécial');
 
         if (passwordErrors.length > 0) {
           newErrors.password = `Le mot de passe doit contenir ${passwordErrors.join(', ')}`;
         }
       }
 
-      // Confirmation du mot de passe
       if (!formData.password_confirmation) {
         newErrors.password_confirmation = 'Veuillez confirmer votre mot de passe';
       } else if (formData.password !== formData.password_confirmation) {
@@ -177,7 +159,6 @@ const RegisterPage = () => {
         newErrors.company_name = 'Le nom de l\'entreprise doit contenir au moins 2 caractères';
       }
 
-      // ICE (optionnel mais si rempli, doit être valide - 15 chiffres au Maroc)
       if (formData.company_ice && !/^\d{15}$/.test(formData.company_ice.replace(/\s/g, ''))) {
         newErrors.company_ice = 'L\'ICE doit contenir 15 chiffres';
       }
@@ -210,7 +191,7 @@ const RegisterPage = () => {
 
     try {
       if (isGoogleSignup) {
-        // Google signup flow
+        // ✅ Google signup flow - Utiliser loginWithToken après inscription
         const payload = {
           google_id: googleData.google_id,
           email: formData.email,
@@ -230,11 +211,24 @@ const RegisterPage = () => {
         }
 
         const response = await api.post('/auth/google/complete', payload);
-        localStorage.setItem('token', response.data.data.token);
-      navigate('/dashboard');
+        
+        if (response.data.success) {
+          const { user, token } = response.data.data;
+          
+          // ✅ Utiliser loginWithToken pour connecter l'utilisateur
+          const loginResult = await loginWithToken(user, token);
+          
+          if (loginResult.success) {
+            navigate('/dashboard');
+          } else {
+            setAlert({ type: 'error', message: 'Erreur lors de la connexion automatique' });
+          }
+        } else {
+          setAlert({ type: 'error', message: response.data.message || 'Erreur lors de l\'inscription' });
+        }
 
       } else {
-      
+        // Normal signup flow
         const payload = {
           email: formData.email,
           first_name: formData.first_name,
@@ -256,7 +250,6 @@ const RegisterPage = () => {
         const result = await register(payload);
 
         if (!result.success) {
-          // Gérer les erreurs de validation Laravel
           if (result.errors) {
             setErrors(result.errors);
           }
@@ -264,17 +257,15 @@ const RegisterPage = () => {
           return;
         }
 
-      navigate('/dashboard');
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('Erreur inscription:', error);
 
-      // Gérer les erreurs de validation Laravel (422)
       if (error.response?.status === 422) {
         const validationErrors = error.response.data.errors || {};
         setErrors(validationErrors);
 
-        // Afficher le premier message d'erreur
         const firstError = Object.values(validationErrors)[0];
         setAlert({
           type: 'error',
@@ -361,7 +352,6 @@ const RegisterPage = () => {
               error={errors.phone}
             />
 
-            {/* Mot de passe (seulement pour inscription normale) */}
             {!isGoogleSignup && (
               <>
                 <div>
@@ -376,7 +366,6 @@ const RegisterPage = () => {
                     error={errors.password}
                     required
                   />
-                  {/* Indicateur de force du mot de passe */}
                   {showPasswordStrength && (
                     <PasswordStrengthIndicator password={formData.password} />
                   )}
@@ -410,7 +399,6 @@ const RegisterPage = () => {
         {/* ============ ÉTAPE 2 ============ */}
         {step === 2 && (
           <>
-            {/* Account Type Selection */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-neutral-700">
                 Type de compte <span className="text-primary">*</span>
@@ -458,7 +446,6 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Company Fields (if professional) */}
             {formData.account_type === 'professionnel' && (
               <div className="space-y-4 pt-4 border-t border-neutral-100">
                 <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">

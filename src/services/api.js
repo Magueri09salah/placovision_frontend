@@ -45,13 +45,24 @@ export const authAPI = {
   me: () => api.get('/me'),
   updateProfile: (data) => {
     const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined) {
-        formData.append(key, data[key]);
+    
+    // Ajouter _method pour simuler PUT (Laravel)
+    formData.append('_method', 'PUT');
+    
+    // ✅ Ajouter les champs un par un
+    if (data.first_name) formData.append('first_name', data.first_name);
+    if (data.last_name) formData.append('last_name', data.last_name);
+    if (data.phone !== undefined) formData.append('phone', data.phone || '');
+    
+    // ✅ Ajouter l'avatar seulement si c'est un fichier
+    if (data.avatar instanceof File) {
+      formData.append('avatar', data.avatar, data.avatar.name);
+    }
+    
+    return api.post('/profile', formData, {
+      headers: { 
+        'Content-Type': 'multipart/form-data',
       }
-    });
-    return api.put('/profile', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   updateCompanyProfile: (data) => {

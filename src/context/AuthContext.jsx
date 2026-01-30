@@ -114,11 +114,22 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (data) => {
     try {
       const response = await authAPI.updateProfile(data);
-      setUser(prev => ({ ...prev, ...response.data.data }));
-      return { success: true };
-    } catch (err) {
-      const message = err.response?.data?.message || 'Erreur lors de la mise à jour';
-      return { success: false, error: message };
+
+      if (response.data.success) {
+        setUser(prev => ({
+          ...prev,
+          ...response.data.data,
+        }));
+        return { success: true };
+      }
+
+      return { success: false, error: response.data.message };
+    } catch (error) {
+      console.error('Erreur updateProfile:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Erreur lors de la mise à jour du profil' 
+      };
     }
   };
 
