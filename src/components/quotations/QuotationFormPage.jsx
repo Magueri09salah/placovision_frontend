@@ -76,6 +76,26 @@ const STEPS = [
   { id: 4, name: 'Récapitulatif' },
 ];
 
+// ============ CONSTANTES VIS ============
+
+const VIS_PAR_BOITE = 1000; // 1 boîte = 1000 vis
+const PRIX_BOITE_VIS_25MM = 150; // Prix d'une boîte de vis 25mm (ajustez selon vos prix)
+const PRIX_BOITE_VIS_9MM = 120;  // Prix d'une boîte de vis 9mm (ajustez selon vos prix)
+
+// ============ FONCTION DE CONVERSION VIS → BOÎTES ============
+
+/**
+ * Convertit un nombre de vis en nombre de boîtes
+ * Règle: 1 boîte = 1000 vis, minimum 1 boîte
+ * @param {number} nombreVis - Nombre de vis calculé
+ * @returns {number} - Nombre de boîtes nécessaires
+ */
+const convertVisToBoites = (nombreVis) => {
+  if (nombreVis <= 0) return 0;
+  // Minimum 1 boîte, sinon arrondir au supérieur
+  return Math.max(1, Math.ceil(nombreVis / VIS_PAR_BOITE));
+};
+
 // ============ RÈGLES DE CALCUL (pour 10 m² ou 10 ml) ============
 
 const MATERIAL_RULES = {
@@ -85,41 +105,42 @@ const MATERIAL_RULES = {
     { designation: 'Rail 48', quantity: 3, unit: 'unité', unit_price: 21.12 },
     { designation: 'Fourrure', quantity: 2, unit: 'unité', unit_price: 21.12 },
     { designation: 'Isolant (laine de verre)', quantity: 10, unit: 'm²', unit_price: 35 },
-    { designation: 'Vis TTPC 25 mm', quantity: 90, unit: 'unité', unit_price: 0.15 },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
+    // ✅ Vis en boîtes
+    { designation: 'Vis TTPC 25 mm', quantity: 90, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
+    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
     { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 0.37 },
-    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 8 },
+    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 48 },
+    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 163 },
   ],
   plafond_ba13: [
     { designation: 'Plaque BA13', quantity: 3, unit: 'unité', unit_price: 24.12 },
     { designation: 'Fourrure', quantity: 7, unit: 'unité', unit_price: 21.12 },
     { designation: 'Tige filetée + pivot + cheville béton', quantity: 16, unit: 'ensemble', unit_price: 8 },
-    { designation: 'Vis TTPC 25 mm', quantity: 70, unit: 'unité', unit_price: 0.15 },
-    { designation: 'Vis TTPC 9 mm', quantity: 20, unit: 'unité', unit_price: 0.12 },
-    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 8 },
+    { designation: 'Vis TTPC 25 mm', quantity: 70, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
+    { designation: 'Vis TTPC 9 mm', quantity: 20, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
+    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 48 },
+    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 163 },
   ],
   cloison: [
     { designation: 'Plaque BA13', quantity: 6, unit: 'unité', unit_price: 24.12 },
     { designation: 'Montant 70', quantity: 12, unit: 'unité', unit_price: 33.00 },
     { designation: 'Rail 70', quantity: 3, unit: 'unité', unit_price: 28.20 },
     { designation: 'Isolant (laine de verre)', quantity: 10, unit: 'm²', unit_price: 35 },
-    { designation: 'Vis TTPC 25 mm', quantity: 150, unit: 'unité', unit_price: 0.15 },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
-    { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 1.50 },
-    { designation: 'Bande à joint', quantity: 30, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 10, unit: 'sacs', unit_price: 8 },
+    { designation: 'Vis TTPC 25 mm', quantity: 150, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
+    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
+    { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 0.37 },
+    { designation: 'Bande à joint', quantity: 30, unit: 'm', unit_price: 48 },
+    { designation: 'Enduit', quantity: 10, unit: 'sacs', unit_price: 163 },
   ],
   gaine_creuse: [
     { designation: 'Plaque BA13', quantity: 2, unit: 'unité', unit_price: 24.12 },
     { designation: 'Cornière', quantity: 8, unit: 'unité', unit_price: 33.44 },
     { designation: 'Fourrure', quantity: 3, unit: 'unité', unit_price: 21.12 },
-    { designation: 'Vis TTPC 25 mm', quantity: 120, unit: 'unité', unit_price: 0.15 },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'unité', unit_price: 0.12 },
+    { designation: 'Vis TTPC 25 mm', quantity: 120, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
+    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
     { designation: 'Tige filetée + pivot + cheville béton', quantity: 10, unit: 'ensemble', unit_price: 8 },
-    { designation: 'Bande à joint', quantity: 20, unit: 'm', unit_price: 1.20 },
-    { designation: 'Enduit', quantity: 4, unit: 'sacs', unit_price: 8 },
+    { designation: 'Bande à joint', quantity: 20, unit: 'm', unit_price: 48 },
+    { designation: 'Enduit', quantity: 4, unit: 'sacs', unit_price: 163 },
   ],
 };
 
@@ -199,7 +220,7 @@ const QuotationFormPage = () => {
 
   // ============ CALCULATIONS ============
 
-  const calculateMaterialsForWork = (workType, surface, roomType) => {
+    const calculateMaterialsForWork = (workType, surface, roomType) => {
     const rules = MATERIAL_RULES[workType] || [];
     const baseSurface = 10;
     const coefficient = surface / baseSurface;
@@ -215,15 +236,23 @@ const QuotationFormPage = () => {
         designation = PLAQUE_BY_ROOM[roomType] || rule.designation;
       }
 
+      // ✅ Conversion Vis → Boîtes
+      if (rule.isVis) {
+        const nombreVis = Math.ceil(calculatedQty);
+        calculatedQty = convertVisToBoites(nombreVis);
+        unit = 'boîte';
+        // Le prix est déjà le prix par boîte
+      }
       // 🟢 Enduit conversion: kg → sacs
-      if (designation.toLowerCase().includes('enduit')) {
+      else if (designation.toLowerCase().includes('enduit')) {
         calculatedQty = convertKgToSacs(calculatedQty);
         unit = 'sacs';
-      } else {
+      } 
+      // Autres matériaux
+      else {
         calculatedQty = Math.ceil(calculatedQty);
       }
 
-      // const calculatedQty = Math.ceil(rule.quantity * coefficient);
       let finalItem = {
         id: `${workType}-${index}`,
         designation,
@@ -235,20 +264,25 @@ const QuotationFormPage = () => {
         is_modified: false,
       };
 
-      finalItem = convertBandeAJoint({
-        designation: finalItem.designation,
-        quantity: finalItem.quantity_calculated,
-        unit: finalItem.unit,
-        unit_price: finalItem.unit_price,
-      });
+      // Conversion bande à joint (si ce n'est pas des vis)
+      if (!rule.isVis) {
+        finalItem = convertBandeAJoint({
+          designation: finalItem.designation,
+          quantity: finalItem.quantity_calculated,
+          unit: finalItem.unit,
+          unit_price: finalItem.unit_price,
+        });
 
-      return {
-        ...finalItem,
-        quantity_calculated: finalItem.quantity,
-        quantity_adjusted: finalItem.quantity,
-        total_ht: finalItem.quantity * finalItem.unit_price,
-        is_modified: false,
-      };
+        return {
+          ...finalItem,
+          quantity_calculated: finalItem.quantity,
+          quantity_adjusted: finalItem.quantity,
+          total_ht: finalItem.quantity * finalItem.unit_price,
+          is_modified: false,
+        };
+      }
+
+      return finalItem;
     });
   };
 

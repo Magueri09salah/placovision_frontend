@@ -1,5 +1,5 @@
 // src/components/layout/AuthLayout.jsx
-import Logo from '../common/Logo';
+import Logo_auth from '../common/Logo_auth';
 
 const AuthLayout = ({ children, title, subtitle }) => {
   return (
@@ -24,7 +24,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="mb-8 animate-fade-in">
-          <Logo size="large" />
+          <Logo_auth size="large" />
         </div>
 
         {/* Title */}
