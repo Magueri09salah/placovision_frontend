@@ -62,11 +62,13 @@ const ROOM_TYPES = [
   { value: 'autre', label: 'Autre', icon: '📦' },
 ];
 
+// ✅ 5 types d'ouvrages selon DTU 25.41
 const WORK_TYPES = [
-  { value: 'habillage_mur', label: 'Habillage de mur', unit: 'm2', unitLabel: 'm²', icon: '🧱' },
-  { value: 'plafond_ba13', label: 'Plafond BA13', unit: 'm2', unitLabel: 'm²', icon: '⬆️' },
-  { value: 'cloison', label: 'Cloison', unit: 'm2', unitLabel: 'm²', icon: '🚪' },
-  { value: 'gaine_creuse', label: 'Gaine creuse', unit: 'ml', unitLabel: 'ml', icon: '📏' },
+  { value: 'habillage_mur', label: 'Habillage BA13 / Contre-cloison', unit: 'm2', unitLabel: 'm²', icon: '🧱', description: 'Ouvrage vertical – 1 face' },
+  { value: 'cloison_simple', label: 'Cloison simple ossature', unit: 'm2', unitLabel: 'm²', icon: '🚪', description: 'M48 / M70 / M90' },
+  { value: 'cloison_double', label: 'Cloison double ossature', unit: 'm2', unitLabel: 'm²', icon: '🚪', description: 'Épaisseur ≥ 140mm' },
+  { value: 'gaine_technique', label: 'Gaine technique BA13', unit: 'm2', unitLabel: 'm²', icon: '📏', description: 'Ouvrage vertical technique' },
+  { value: 'plafond_ba13', label: 'Plafond BA13', unit: 'm2', unitLabel: 'm²', icon: '⬆️', description: 'Sur ossature métallique' },
 ];
 
 const STEPS = [
@@ -76,120 +78,321 @@ const STEPS = [
   { id: 4, name: 'Récapitulatif' },
 ];
 
-// ============ CONSTANTES VIS ============
+// ============ PRIX UNITAIRES ============
+const PRIX_UNITAIRES = {
+  plaque_ba13_standard: 24.12,
+  plaque_hydro: 34.20,
+  plaque_feu: 0,
+  montant_48: 26.16,
+  montant_70: 33.00,
+  montant_90: 0,
+  rail_48: 21.12,
+  rail_70: 28.20,
+  rail_90: 0,
+  fourrure: 21.12,
+  isolant: 0, // par m²
+  vis_25mm_boite: 62.40, // boîte de 1000
+  vis_9mm_boite: 69.60, // boîte de 1000
+  suspente: 0.00,
+  corniere: 13.44,
+  bande_joint_150: 48.00, // rouleau 150m
+  bande_joint_300: 85.00, // rouleau 300m
+  enduit_sac: 163.20, // sac de 25kg
+};
 
-const VIS_PAR_BOITE = 1000; // 1 boîte = 1000 vis
-const PRIX_BOITE_VIS_25MM = 150; // Prix d'une boîte de vis 25mm (ajustez selon vos prix)
-const PRIX_BOITE_VIS_9MM = 120;  // Prix d'une boîte de vis 9mm (ajustez selon vos prix)
+// ============ PLAQUE SELON TYPE DE PIÈCE ============
+const PLAQUE_BY_ROOM = {
+  salon_sejour: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  chambre: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  cuisine: { designation: 'Plaque Hydro', prix: PRIX_UNITAIRES.plaque_hydro },
+  salle_de_bain: { designation: 'Plaque Hydro', prix: PRIX_UNITAIRES.plaque_hydro },
+  wc: { designation: 'Plaque Hydro', prix: PRIX_UNITAIRES.plaque_hydro },
+  bureau: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  garage: { designation: 'Plaque Feu', prix: PRIX_UNITAIRES.plaque_feu },
+  exterieur: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  autre: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+};
 
-// ============ FONCTION DE CONVERSION VIS → BOÎTES ============
+// ============ CONSTANTES DTU 25.41 ============
+const DTU = {
+  ENTRAXE: 0.60, // 60 cm
+  PLAQUE_SURFACE: 3.00, // m² par plaque (120 × 250 cm)
+  PROFIL_LONGUEUR: 3.00, // m par profil
+  VIS_PAR_BOITE: 1000,
+  KG_PAR_SAC_ENDUIT: 25,
+};
+
+// ============ FONCTIONS DE CALCUL DTU 25.41 ============
 
 /**
- * Convertit un nombre de vis en nombre de boîtes
- * Règle: 1 boîte = 1000 vis, minimum 1 boîte
- * @param {number} nombreVis - Nombre de vis calculé
- * @returns {number} - Nombre de boîtes nécessaires
+ * Arrondi à l'unité supérieure (règle DTU)
  */
-const convertVisToBoites = (nombreVis) => {
+const arrondiSup = (value) => Math.ceil(value);
+
+/**
+ * Convertit les vis en boîtes (1 boîte = 1000 vis, minimum 1)
+ */
+const visToBoites = (nombreVis) => {
   if (nombreVis <= 0) return 0;
-  // Minimum 1 boîte, sinon arrondir au supérieur
-  return Math.max(1, Math.ceil(nombreVis / VIS_PAR_BOITE));
+  return Math.max(1, Math.ceil(nombreVis / DTU.VIS_PAR_BOITE));
 };
 
-// ============ RÈGLES DE CALCUL (pour 10 m² ou 10 ml) ============
-
-const MATERIAL_RULES = {
-  habillage_mur: [
-    { designation: 'Plaque BA13', quantity: 3, unit: 'unité', unit_price: 24.12 },
-    { designation: 'Montant 48', quantity: 12, unit: 'unité', unit_price: 26.16 },
-    { designation: 'Rail 48', quantity: 3, unit: 'unité', unit_price: 21.12 },
-    { designation: 'Fourrure', quantity: 2, unit: 'unité', unit_price: 21.12 },
-    { designation: 'Isolant (laine de verre)', quantity: 10, unit: 'm²', unit_price: 35 },
-    // ✅ Vis en boîtes
-    { designation: 'Vis TTPC 25 mm', quantity: 90, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
-    { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 0.37 },
-    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 48 },
-    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 163 },
-  ],
-  plafond_ba13: [
-    { designation: 'Plaque BA13', quantity: 3, unit: 'unité', unit_price: 24.12 },
-    { designation: 'Fourrure', quantity: 7, unit: 'unité', unit_price: 21.12 },
-    { designation: 'Tige filetée + pivot + cheville béton', quantity: 16, unit: 'ensemble', unit_price: 8 },
-    { designation: 'Vis TTPC 25 mm', quantity: 70, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
-    { designation: 'Vis TTPC 9 mm', quantity: 20, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
-    { designation: 'Bande à joint', quantity: 15, unit: 'm', unit_price: 48 },
-    { designation: 'Enduit', quantity: 5, unit: 'sacs', unit_price: 163 },
-  ],
-  cloison: [
-    { designation: 'Plaque BA13', quantity: 6, unit: 'unité', unit_price: 24.12 },
-    { designation: 'Montant 70', quantity: 12, unit: 'unité', unit_price: 33.00 },
-    { designation: 'Rail 70', quantity: 3, unit: 'unité', unit_price: 28.20 },
-    { designation: 'Isolant (laine de verre)', quantity: 10, unit: 'm²', unit_price: 35 },
-    { designation: 'Vis TTPC 25 mm', quantity: 150, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
-    { designation: 'Cheville à frapper', quantity: 12, unit: 'unité', unit_price: 0.37 },
-    { designation: 'Bande à joint', quantity: 30, unit: 'm', unit_price: 48 },
-    { designation: 'Enduit', quantity: 10, unit: 'sacs', unit_price: 163 },
-  ],
-  gaine_creuse: [
-    { designation: 'Plaque BA13', quantity: 2, unit: 'unité', unit_price: 24.12 },
-    { designation: 'Cornière', quantity: 8, unit: 'unité', unit_price: 33.44 },
-    { designation: 'Fourrure', quantity: 3, unit: 'unité', unit_price: 21.12 },
-    { designation: 'Vis TTPC 25 mm', quantity: 120, unit: 'vis', unit_price: PRIX_BOITE_VIS_25MM, isVis: true },
-    { designation: 'Vis TTPC 9 mm', quantity: 30, unit: 'vis', unit_price: PRIX_BOITE_VIS_9MM, isVis: true },
-    { designation: 'Tige filetée + pivot + cheville béton', quantity: 10, unit: 'ensemble', unit_price: 8 },
-    { designation: 'Bande à joint', quantity: 20, unit: 'm', unit_price: 48 },
-    { designation: 'Enduit', quantity: 4, unit: 'sacs', unit_price: 163 },
-  ],
-};
-
-const KG_PER_SAC = 25;
-const convertKgToSacs = (kg) => {
+/**
+ * Convertit les kg d'enduit en sacs (1 sac = 25 kg)
+ */
+const kgToSacs = (kg) => {
   if (kg <= 0) return 0;
-  return Math.ceil(kg / KG_PER_SAC);
+  return Math.ceil(kg / DTU.KG_PAR_SAC_ENDUIT);
 };
 
-function convertBandeAJoint(item) {
-  if (item.designation !== 'Bande à joint' || item.unit !== 'm') {
-    return item;
-  }
-
-  const quantityM = item.quantity;
-
-  let rlxQuantity;
-  let designation;
-
-  if (quantityM <= 150) {
-    rlxQuantity = 1;
-    designation = 'Bande à joint 150';
-  } else if (quantityM <= 300) {
-    rlxQuantity = 1;
-    designation = 'Bande à joint 300';
+/**
+ * Convertit les mètres linéaires de bande à joint en rouleaux
+ */
+const bandeToRouleaux = (ml) => {
+  if (ml <= 0) return { designation: 'Bande à joint 150m', quantity: 0, prix: PRIX_UNITAIRES.bande_joint_150 };
+  
+  if (ml <= 150) {
+    return { designation: 'Bande à joint 150m', quantity: 1, prix: PRIX_UNITAIRES.bande_joint_150 };
+  } else if (ml <= 300) {
+    return { designation: 'Bande à joint 300m', quantity: 1, prix: PRIX_UNITAIRES.bande_joint_300 };
   } else {
-    rlxQuantity = Math.ceil(quantityM / 300);
-    rlxQuantity >= 2 ? designation = 'Bande à joint 300'  : designation ='Bande à joint 150' ;
+    const nbRouleaux = Math.ceil(ml / 300);
+    return { designation: 'Bande à joint 300m', quantity: nbRouleaux, prix: PRIX_UNITAIRES.bande_joint_300 };
+  }
+};
+
+/**
+ * Calcul des matériaux selon le type d'ouvrage - DTU 25.41
+ */
+const calculateMaterialsForWork = (workType, longueur, hauteur, roomType) => {
+  const L = parseFloat(longueur) || 0;
+  const H = parseFloat(hauteur) || 0;
+  const surface = L * H;
+  
+  if (surface <= 0) return [];
+
+  const plaque = PLAQUE_BY_ROOM[roomType] || PLAQUE_BY_ROOM.autre;
+  const materials = [];
+  let itemIndex = 0;
+
+  const addMaterial = (designation, quantity, unit, unitPrice) => {
+    materials.push({
+      id: `${workType}-${itemIndex++}`,
+      designation,
+      quantity_calculated: quantity,
+      quantity_adjusted: quantity,
+      unit,
+      unit_price: unitPrice,
+      total_ht: quantity * unitPrice,
+      is_modified: false,
+    });
+  };
+
+  switch (workType) {
+    // ============ 1. HABILLAGE BA13 / CONTRE-CLOISON ============
+    case 'habillage_mur': {
+      // Plaques BA13 = Surface ÷ 3
+      const nbPlaques = arrondiSup(surface / DTU.PLAQUE_SURFACE);
+      addMaterial(plaque.designation, nbPlaques, 'unité', plaque.prix);
+
+      // Montants = (L ÷ 0,60) + 1
+      const nbMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      addMaterial('Montant 48', nbMontants, 'unité', PRIX_UNITAIRES.montant_48);
+
+      // Rails = (L × 2) ÷ 3,00
+      const nbRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+      addMaterial('Rail 48', nbRails, 'unité', PRIX_UNITAIRES.rail_48);
+
+      // Isolant = Surface (m²)
+      const isolant = arrondiSup(surface);
+      addMaterial('Isolant (laine de verre)', isolant, 'm²', PRIX_UNITAIRES.isolant);
+
+      // Vis TTPC 25 mm ≈ 20 vis / m²
+      const vis25 = arrondiSup(surface * 20);
+      const boitesVis25 = visToBoites(vis25);
+      addMaterial('Vis TTPC 25 mm', boitesVis25, 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+
+      // Vis TTPC 9 mm ≈ 3 vis / m²
+      const vis9 = arrondiSup(surface * 3);
+      const boitesVis9 = visToBoites(vis9);
+      addMaterial('Vis TTPC 9 mm', boitesVis9, 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+
+      // Bandes à joint ≈ 3 ml / m²
+      const bandeML = arrondiSup(surface * 3);
+      const bande = bandeToRouleaux(bandeML);
+      addMaterial(bande.designation, bande.quantity, 'rlx', bande.prix);
+
+      // Enduit ≈ 0,5 kg / m²
+      const enduitKg = surface * 0.5;
+      const enduitSacs = kgToSacs(enduitKg);
+      addMaterial('Enduit', enduitSacs, 'sac', PRIX_UNITAIRES.enduit_sac);
+
+      break;
+    }
+
+    // ============ 2. CLOISON SIMPLE OSSATURE ============
+    case 'cloison_simple': {
+      // Plaques BA13 = (Surface × 2) ÷ 3 (2 faces)
+      const nbPlaques = arrondiSup((surface * 2) / DTU.PLAQUE_SURFACE);
+      addMaterial(plaque.designation, nbPlaques, 'unité', plaque.prix);
+
+      // Montants = (L ÷ 0,60) + 1
+      const nbMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      addMaterial('Montant 70', nbMontants, 'unité', PRIX_UNITAIRES.montant_70);
+
+      // Rails = (L × 2) ÷ 3,00
+      const nbRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+      addMaterial('Rail 70', nbRails, 'unité', PRIX_UNITAIRES.rail_70);
+
+      // Isolant = Surface (m²)
+      const isolant = arrondiSup(surface);
+      addMaterial('Isolant (laine de verre)', isolant, 'm²', PRIX_UNITAIRES.isolant);
+
+      // Vis TTPC 25 mm ≈ 40 vis / m²
+      const vis25 = arrondiSup(surface * 40);
+      const boitesVis25 = visToBoites(vis25);
+      addMaterial('Vis TTPC 25 mm', boitesVis25, 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+
+      // Vis TTPC 9 mm ≈ 4 vis / m²
+      const vis9 = arrondiSup(surface * 4);
+      const boitesVis9 = visToBoites(vis9);
+      addMaterial('Vis TTPC 9 mm', boitesVis9, 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+
+      // Bandes à joint ≈ 6 ml / m²
+      const bandeML = arrondiSup(surface * 6);
+      const bande = bandeToRouleaux(bandeML);
+      addMaterial(bande.designation, bande.quantity, 'rlx', bande.prix);
+
+      // Enduit ≈ 1 kg / m²
+      const enduitKg = surface * 1;
+      const enduitSacs = kgToSacs(enduitKg);
+      addMaterial('Enduit', enduitSacs, 'sac', PRIX_UNITAIRES.enduit_sac);
+
+      break;
+    }
+
+    // ============ 3. CLOISON DOUBLE OSSATURE ============
+    case 'cloison_double': {
+      // Plaques BA13 = (Surface × 2) ÷ 3 (2 faces)
+      const nbPlaques = arrondiSup((surface * 2) / DTU.PLAQUE_SURFACE);
+      addMaterial(plaque.designation, nbPlaques, 'unité', plaque.prix);
+
+      // Montants = 2 × ((L ÷ 0,60) + 1) (double ossature)
+      const nbMontants = arrondiSup(2 * ((L / DTU.ENTRAXE) + 1));
+      addMaterial('Montant 70', nbMontants, 'unité', PRIX_UNITAIRES.montant_70);
+
+      // Rails = 2 × ((L × 2) ÷ 3,00)
+      const nbRails = arrondiSup(2 * ((L * 2) / DTU.PROFIL_LONGUEUR));
+      addMaterial('Rail 70', nbRails, 'unité', PRIX_UNITAIRES.rail_70);
+
+      // Isolant = Surface × 2 (m²)
+      const isolant = arrondiSup(surface * 2);
+      addMaterial('Isolant (laine de verre)', isolant, 'm²', PRIX_UNITAIRES.isolant);
+
+      // Vis TTPC 25 mm ≈ 45 vis / m²
+      const vis25 = arrondiSup(surface * 45);
+      const boitesVis25 = visToBoites(vis25);
+      addMaterial('Vis TTPC 25 mm', boitesVis25, 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+
+      // Vis TTPC 9 mm ≈ 6 vis / m²
+      const vis9 = arrondiSup(surface * 6);
+      const boitesVis9 = visToBoites(vis9);
+      addMaterial('Vis TTPC 9 mm', boitesVis9, 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+
+      // Bandes à joint ≈ 6 ml / m²
+      const bandeML = arrondiSup(surface * 6);
+      const bande = bandeToRouleaux(bandeML);
+      addMaterial(bande.designation, bande.quantity, 'rlx', bande.prix);
+
+      // Enduit ≈ 1,2 kg / m²
+      const enduitKg = surface * 1.2;
+      const enduitSacs = kgToSacs(enduitKg);
+      addMaterial('Enduit', enduitSacs, 'sac', PRIX_UNITAIRES.enduit_sac);
+
+      break;
+    }
+
+    // ============ 4. GAINE TECHNIQUE BA13 ============
+    case 'gaine_technique': {
+      // Plaques BA13 = Surface ÷ 3
+      const nbPlaques = arrondiSup(surface / DTU.PLAQUE_SURFACE);
+      addMaterial(plaque.designation, nbPlaques, 'unité', plaque.prix);
+
+      // Montants = (L ÷ 0,60) + 1 (L = développement)
+      const nbMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      addMaterial('Montant 48', nbMontants, 'unité', PRIX_UNITAIRES.montant_48);
+
+      // Rails = (L × 2) ÷ 3,00
+      const nbRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+      addMaterial('Rail 48', nbRails, 'unité', PRIX_UNITAIRES.rail_48);
+
+      // Vis TTPC 25 mm ≈ 15 vis / m²
+      const vis25 = arrondiSup(surface * 15);
+      const boitesVis25 = visToBoites(vis25);
+      addMaterial('Vis TTPC 25 mm', boitesVis25, 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+
+      // Vis TTPC 9 mm ≈ 3 vis / m²
+      const vis9 = arrondiSup(surface * 3);
+      const boitesVis9 = visToBoites(vis9);
+      addMaterial('Vis TTPC 9 mm', boitesVis9, 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+
+      // Bandes à joint ≈ 2 ml / m²
+      const bandeML = arrondiSup(surface * 2);
+      const bande = bandeToRouleaux(bandeML);
+      addMaterial(bande.designation, bande.quantity, 'rlx', bande.prix);
+
+      // Enduit ≈ 0,3 kg / m²
+      const enduitKg = surface * 0.3;
+      const enduitSacs = kgToSacs(enduitKg);
+      addMaterial('Enduit', enduitSacs, 'sac', PRIX_UNITAIRES.enduit_sac);
+
+      break;
+    }
+
+    // ============ 5. PLAFOND BA13 ============
+    case 'plafond_ba13': {
+      // Pour le plafond: L = longueur, H = largeur (l)
+      const l = H; // largeur
+      
+      // Plaques BA13 = Surface ÷ 3
+      const nbPlaques = arrondiSup(surface / DTU.PLAQUE_SURFACE);
+      addMaterial(plaque.designation, nbPlaques, 'unité', plaque.prix);
+
+      // Fourrures = (l ÷ 0,60) × L ÷ 3,00
+      const nbFourrures = arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR);
+      addMaterial('Fourrure', nbFourrures, 'unité', PRIX_UNITAIRES.fourrure);
+
+      // Suspentes ≈ Surface × 2,5
+      const nbSuspentes = arrondiSup(surface * 2.5);
+      addMaterial('Suspente', nbSuspentes, 'unité', PRIX_UNITAIRES.suspente);
+
+      // Cornières périphériques = ((L + l) × 2) ÷ 3,00
+      const nbCornieres = arrondiSup(((L + l) * 2) / DTU.PROFIL_LONGUEUR);
+      addMaterial('Cornière périphérique', nbCornieres, 'unité', PRIX_UNITAIRES.corniere);
+
+      // Vis TTPC 25 mm ≈ 22 vis / m²
+      const vis25 = arrondiSup(surface * 22);
+      const boitesVis25 = visToBoites(vis25);
+      addMaterial('Vis TTPC 25 mm', boitesVis25, 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+
+      // Bandes à joint ≈ 3 ml / m²
+      const bandeML = arrondiSup(surface * 3);
+      const bande = bandeToRouleaux(bandeML);
+      addMaterial(bande.designation, bande.quantity, 'rlx', bande.prix);
+
+      // Enduit ≈ 0,5 kg / m²
+      const enduitKg = surface * 0.5;
+      const enduitSacs = kgToSacs(enduitKg);
+      addMaterial('Enduit', enduitSacs, 'sac', PRIX_UNITAIRES.enduit_sac);
+
+      break;
+    }
+
+    default:
+      break;
   }
 
-  return {
-    ...item,
-    designation,
-    quantity: rlxQuantity,
-    unit: 'rlx',
-  };
-}
-
-
-const PLAQUE_BY_ROOM = {
-  salon_sejour: 'Plaque BA13 standard',
-  chambre: 'Plaque BA13 standard',
-  cuisine: 'Plaque Hydro',
-  salle_de_bain: 'Plaque Hydro',
-  wc: 'Plaque Hydro',
-  bureau: 'Plaque BA13 standard',
-  garage: 'Plaque Feu',
-  exterieur: 'Plaque OutGuard',
-  autre: 'Plaque BA13 standard',
+  return materials;
 };
 
 // ============ COMPOSANT PRINCIPAL ============
@@ -215,77 +418,9 @@ const QuotationFormPage = () => {
   const [rooms, setRooms] = useState([]);
 
   // Calculated materials (with user adjustments)
-  // ✅ Clé = "roomIndex-workIndex" (ex: "0-0", "0-1", "1-0")
   const [calculatedMaterials, setCalculatedMaterials] = useState({});
 
   // ============ CALCULATIONS ============
-
-    const calculateMaterialsForWork = (workType, surface, roomType) => {
-    const rules = MATERIAL_RULES[workType] || [];
-    const baseSurface = 10;
-    const coefficient = surface / baseSurface;
-
-    return rules.map((rule, index) => {
-      let designation = rule.designation;
-      let calculatedQty = rule.quantity * coefficient;
-      let unit = rule.unit;
-      let unitPrice = rule.unit_price;
-
-      // ✅ Replace the plaque based on roomType
-      if (rule.designation.includes('Plaque')) {
-        designation = PLAQUE_BY_ROOM[roomType] || rule.designation;
-      }
-
-      // ✅ Conversion Vis → Boîtes
-      if (rule.isVis) {
-        const nombreVis = Math.ceil(calculatedQty);
-        calculatedQty = convertVisToBoites(nombreVis);
-        unit = 'boîte';
-        // Le prix est déjà le prix par boîte
-      }
-      // 🟢 Enduit conversion: kg → sacs
-      else if (designation.toLowerCase().includes('enduit')) {
-        calculatedQty = convertKgToSacs(calculatedQty);
-        unit = 'sacs';
-      } 
-      // Autres matériaux
-      else {
-        calculatedQty = Math.ceil(calculatedQty);
-      }
-
-      let finalItem = {
-        id: `${workType}-${index}`,
-        designation,
-        quantity_calculated: calculatedQty,
-        quantity_adjusted: calculatedQty,
-        unit,
-        unit_price: unitPrice,
-        total_ht: calculatedQty * unitPrice,
-        is_modified: false,
-      };
-
-      // Conversion bande à joint (si ce n'est pas des vis)
-      if (!rule.isVis) {
-        finalItem = convertBandeAJoint({
-          designation: finalItem.designation,
-          quantity: finalItem.quantity_calculated,
-          unit: finalItem.unit,
-          unit_price: finalItem.unit_price,
-        });
-
-        return {
-          ...finalItem,
-          quantity_calculated: finalItem.quantity,
-          quantity_adjusted: finalItem.quantity,
-          total_ht: finalItem.quantity * finalItem.unit_price,
-          is_modified: false,
-        };
-      }
-
-      return finalItem;
-    });
-  };
-
 
   // ✅ Recalculate materials when rooms/works change
   useEffect(() => {
@@ -293,37 +428,39 @@ const QuotationFormPage = () => {
 
     rooms.forEach((room, roomIndex) => {
       room.works.forEach((work, workIndex) => {
-        // ✅ Clé unique par room + work
         const key = `${roomIndex}-${workIndex}`;
         const existingMaterials = calculatedMaterials[key];
 
+        // ✅ Utiliser longueur et hauteur au lieu de surface
+        const materials = calculateMaterialsForWork(
+          work.work_type,
+          work.longueur || 0,
+          work.hauteur || 0,
+          room.room_type
+        );
+
         if (!existingMaterials) {
-          // Nouveau work, calculer les matériaux
           newMaterials[key] = {
-            items: calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type),
+            items: materials,
             userModified: false,
           };
         } else if (!existingMaterials.userModified) {
-          // Work existant mais pas modifié par l'utilisateur, recalculer
           newMaterials[key] = {
-            items: calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type),
+            items: materials,
             userModified: false,
           };
         } else {
-          // Work modifié par l'utilisateur, garder les modifications mais mettre à jour quantity_calculated
-          const newItems = calculateMaterialsForWork(work.work_type, work.surface || 0, room.room_type);
+          // Garder les modifications utilisateur
           newMaterials[key] = {
             ...existingMaterials,
             items: existingMaterials.items.map((item, i) => {
               if (item.is_modified) {
-                // Garder la quantité ajustée par l'utilisateur
                 return {
                   ...item,
-                  quantity_calculated: newItems[i]?.quantity_calculated || item.quantity_calculated,
+                  quantity_calculated: materials[i]?.quantity_calculated || item.quantity_calculated,
                 };
               }
-              // Pas modifié, utiliser les nouvelles valeurs
-              return newItems[i] || item;
+              return materials[i] || item;
             }),
           };
         }
@@ -380,7 +517,6 @@ const QuotationFormPage = () => {
 
   const removeRoom = (index) => {
     setRooms(prev => prev.filter((_, i) => i !== index));
-    // ✅ Nettoyer les matériaux calculés pour cette room
     setCalculatedMaterials(prev => {
       const newMaterials = {};
       Object.entries(prev).forEach(([key, value]) => {
@@ -388,7 +524,6 @@ const QuotationFormPage = () => {
         if (roomIdx < index) {
           newMaterials[key] = value;
         } else if (roomIdx > index) {
-          // Réindexer les clés
           const [, workIdx] = key.split('-').map(Number);
           newMaterials[`${roomIdx - 1}-${workIdx}`] = value;
         }
@@ -400,19 +535,14 @@ const QuotationFormPage = () => {
   const addWorkToRoom = (roomIndex, workType) => {
     setRooms(prev => prev.map((room, i) => {
       if (i !== roomIndex) return room;
-
-      // For "Gaine creuse", set height to 1 so surface = width × 1 = width
-      // For other types, keep height empty
-      const initialHeight = workType === 'gaine_creuse' ? 1 : '';
-
       return {
         ...room,
         works: [
           ...room.works,
           {
             work_type: workType,
-            width: '',
-            height: initialHeight,
+            longueur: '',
+            hauteur: '',
             surface: 0
           },
         ],
@@ -420,19 +550,7 @@ const QuotationFormPage = () => {
     }));
   };
 
-  // const updateWorkSurface = (roomIndex, workIndex, surface) => {
-  //   setRooms(prev => prev.map((room, i) => {
-  //     if (i !== roomIndex) return room;
-  //     return {
-  //       ...room,
-  //       works: room.works.map((work, j) => {
-  //         if (j !== workIndex) return work;
-  //         return { ...work, surface: parseFloat(surface) || 0 };
-  //       }),
-  //     };
-  //   }));
-  // };
-
+  // ✅ Mise à jour des dimensions (L et H)
   const updateWorkDimension = (roomIndex, workIndex, field, value) => {
     setRooms(prev =>
       prev.map((room, i) => {
@@ -445,31 +563,22 @@ const QuotationFormPage = () => {
 
             const updatedWork = {
               ...work,
-              [field]: parseFloat(value) || 0,
+              [field]: value,
             };
 
-            // For "Gaine creuse", surface is just the width (length in ml)
-            if (work.work_type === 'gaine_creuse') {
-              const width = updatedWork.width || 0;
-              return {
-                ...updatedWork,
-                surface: width, // For gaine creuse, surface = length in ml
-              };
-            } else {
-              // For other work types, surface = width × height
-              const width = updatedWork.width || 0;
-              const height = updatedWork.height || 0;
-              return {
-                ...updatedWork,
-                surface: Math.round(width * height * 100) / 100, // m²
-              };
-            }
+            // Calculer la surface automatiquement
+            const L = parseFloat(updatedWork.longueur) || 0;
+            const H = parseFloat(updatedWork.hauteur) || 0;
+
+            return {
+              ...updatedWork,
+              surface: Math.round(L * H * 100) / 100,
+            };
           }),
         };
       })
     );
   };
-
 
   const removeWork = (roomIndex, workIndex) => {
     setRooms(prev => prev.map((room, i) => {
@@ -479,7 +588,6 @@ const QuotationFormPage = () => {
         works: room.works.filter((_, j) => j !== workIndex),
       };
     }));
-    // ✅ Nettoyer et réindexer les matériaux
     setCalculatedMaterials(prev => {
       const newMaterials = {};
       Object.entries(prev).forEach(([key, value]) => {
@@ -490,7 +598,6 @@ const QuotationFormPage = () => {
           } else if (wIdx > workIndex) {
             newMaterials[`${rIdx}-${wIdx - 1}`] = value;
           }
-          // wIdx === workIndex → on le supprime
         } else {
           newMaterials[key] = value;
         }
@@ -499,7 +606,6 @@ const QuotationFormPage = () => {
     });
   };
 
-  // ✅ Mise à jour de la quantité d'un matériau
   const updateMaterialQuantity = (materialKey, itemIndex, newQuantity) => {
     setCalculatedMaterials(prev => ({
       ...prev,
@@ -519,7 +625,6 @@ const QuotationFormPage = () => {
     }));
   };
 
-  // ✅ Réinitialiser la quantité d'un matériau
   const resetMaterialQuantity = (materialKey, itemIndex) => {
     setCalculatedMaterials(prev => {
       const updatedItems = prev[materialKey].items.map((item, i) => {
@@ -532,7 +637,6 @@ const QuotationFormPage = () => {
         };
       });
 
-      // Vérifier si encore des items modifiés
       const stillModified = updatedItems.some(item => item.is_modified);
 
       return {
@@ -576,11 +680,11 @@ const QuotationFormPage = () => {
       return false;
     }
 
-    const hasValidSurfaces = rooms.every(room =>
+    const hasValidDimensions = rooms.every(room =>
       room.works.every(work => work.surface > 0)
     );
-    if (!hasValidSurfaces) {
-      setFormError('Veuillez renseigner toutes les surfaces.');
+    if (!hasValidDimensions) {
+      setFormError('Veuillez renseigner les dimensions (longueur et hauteur) pour tous les travaux.');
       return false;
     }
 
@@ -612,8 +716,6 @@ const QuotationFormPage = () => {
   // ============ SUBMIT ============
 
   const handleSubmit = async () => {
-    console.log('handleSubmit appelé');
-
     setSaving(true);
     setFormError(null);
 
@@ -629,14 +731,14 @@ const QuotationFormPage = () => {
           room_type: room.room_type,
           room_name: room.room_name,
           works: room.works.map((work, workIndex) => {
-            // ✅ Utiliser la bonne clé
             const materialKey = `${roomIndex}-${workIndex}`;
             const materials = calculatedMaterials[materialKey]?.items || [];
 
             return {
               work_type: work.work_type,
+              longueur: parseFloat(work.longueur) || 0,
+              hauteur: parseFloat(work.hauteur) || 0,
               surface: parseFloat(work.surface) || 0,
-              // ✅ Inclure les items avec leurs quantités ajustées
               items: materials.map(item => ({
                 designation: item.designation,
                 quantity_calculated: item.quantity_calculated,
@@ -653,15 +755,13 @@ const QuotationFormPage = () => {
 
       const response = await quotationAPI.create(payload);
 
-      console.log('Réponse:', response.data);
-
       if (response.data?.data?.id) {
         navigate(`/quotations/${response.data.data.id}`);
       } else {
         navigate('/quotations');
       }
     } catch (error) {
-      console.error('Erreur complète:', error);
+      console.error('Erreur:', error);
 
       if (error.response?.status === 422) {
         setErrors(error.response.data.errors || {});
@@ -893,7 +993,7 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 3: Work Types and Surfaces */}
+          {/* Step 3: Work Types and Dimensions */}
           {currentStep === 3 && (
             <div className="space-y-6">
               {rooms.map((room, roomIndex) => {
@@ -907,7 +1007,7 @@ const QuotationFormPage = () => {
                     </div>
 
                     <p className="text-sm text-gray-600 mb-4">Choisissez le type de travaux :</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                       {WORK_TYPES.map((workType) => {
                         const isAdded = room.works.some(w => w.work_type === workType.value);
                         return (
@@ -916,14 +1016,19 @@ const QuotationFormPage = () => {
                             type="button"
                             onClick={() => !isAdded && addWorkToRoom(roomIndex, workType.value)}
                             disabled={isAdded}
-                            className={`p-3 rounded-lg border-2 text-center transition-all ${isAdded
+                            className={`p-3 rounded-lg border-2 text-left transition-all ${isAdded
                                 ? 'border-green-500 bg-green-50 text-green-700'
                                 : 'border-gray-200 hover:border-red-500 hover:bg-red-50'
                               }`}
                           >
-                            <span className="text-xl mb-1 block">{workType.icon}</span>
-                            <span className="text-xs font-medium">{workType.label}</span>
-                            {isAdded && <CheckIcon className="w-4 h-4 mx-auto mt-1 text-green-600" />}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{workType.icon}</span>
+                              <div>
+                                <span className="text-sm font-medium block">{workType.label}</span>
+                                <span className="text-xs text-gray-500">{workType.description}</span>
+                              </div>
+                              {isAdded && <CheckIcon className="w-4 h-4 ml-auto text-green-600" />}
+                            </div>
                           </button>
                         );
                       })}
@@ -933,77 +1038,76 @@ const QuotationFormPage = () => {
                       <div className="space-y-4 border-t border-gray-200 pt-6">
                         {room.works.map((work, workIndex) => {
                           const workTypeInfo = WORK_TYPES.find(w => w.value === work.work_type);
+                          const isPlafond = work.work_type === 'plafond_ba13';
+                          
                           return (
-                            <div key={workIndex} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                              <span className="text-xl">{workTypeInfo?.icon}</span>
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-800">{workTypeInfo?.label}</p>
+                            <div key={workIndex} className="p-4 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{workTypeInfo?.icon}</span>
+                                  <div>
+                                    <p className="font-medium text-gray-800">{workTypeInfo?.label}</p>
+                                    <p className="text-xs text-gray-500">{workTypeInfo?.description}</p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeWork(roomIndex, workIndex)}
+                                  className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
+                                >
+                                  <TrashIcon className="w-5 h-5" />
+                                </button>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                {work.work_type === 'gaine_creuse' ? (
-                                  // Single input for "Gaine creuse" (length in ml)
+                              {/* ✅ Entrées Longueur et Hauteur/Largeur selon DTU */}
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    {isPlafond ? 'Longueur (L)' : 'Longueur (L)'}
+                                  </label>
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      placeholder="Longueur"
-                                      value={work.width || ''}
+                                      placeholder="0.00"
+                                      value={work.longueur || ''}
                                       onChange={(e) =>
-                                        updateWorkDimension(roomIndex, workIndex, 'width', e.target.value)
+                                        updateWorkDimension(roomIndex, workIndex, 'longueur', e.target.value)
                                       }
-                                      className="w-24 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500"
                                     />
-                                    <span className="text-gray-600 text-sm">ml</span>
+                                    <span className="text-gray-500 text-sm">m</span>
                                   </div>
-                                ) : (
-                                  // Two inputs for other work types (width × height in meters)
-                                  <>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    {isPlafond ? 'Largeur (l)' : 'Hauteur (H)'}
+                                  </label>
+                                  <div className="flex items-center gap-2">
                                     <input
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      placeholder="L"
-                                      value={work.width || ''}
+                                      placeholder="0.00"
+                                      value={work.hauteur || ''}
                                       onChange={(e) =>
-                                        updateWorkDimension(roomIndex, workIndex, 'width', e.target.value)
+                                        updateWorkDimension(roomIndex, workIndex, 'hauteur', e.target.value)
                                       }
-                                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500"
                                     />
-                                    <span className="text-gray-500">×</span>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      placeholder="H"
-                                      value={work.height || ''}
-                                      onChange={(e) =>
-                                        updateWorkDimension(roomIndex, workIndex, 'height', e.target.value)
-                                      }
-                                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-red-500"
-                                    />
-                                    <span className="text-gray-600 text-sm">m</span>
-                                  </>
-                                )}
+                                    <span className="text-gray-500 text-sm">m</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    Surface calculée
+                                  </label>
+                                  <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-700">
+                                    {work.surface || 0} m²
+                                  </div>
+                                </div>
                               </div>
-
-                              {work.surface > 0 && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {work.work_type === 'gaine_creuse' ? (
-                                    <>Longueur : <span className="font-medium">{work.surface} ml</span></>
-                                  ) : (
-                                    <>Surface : <span className="font-medium">{work.surface} m²</span></>
-                                  )}
-                                </p>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => removeWork(roomIndex, workIndex)}
-                                className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
-                              >
-                                <TrashIcon className="w-5 h-5" />
-                              </button>
                             </div>
                           );
                         })}
@@ -1015,7 +1119,7 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* ✅ Step 4: Summary with Materials - CORRIGÉ */}
+          {/* Step 4: Summary with Materials */}
           {currentStep === 4 && (
             <div className="space-y-6">
               {/* Client Summary */}
@@ -1041,6 +1145,13 @@ const QuotationFormPage = () => {
                 </div>
               </div>
 
+              {/* DTU Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>📋 Mention DTU :</strong> Les calculs et quantités sont établis conformément aux règles de calcul et de mise en œuvre du DTU 25.41. Ils sont destinés à un usage de simulation et peuvent être ajustés selon les contraintes réelles du chantier.
+                </p>
+              </div>
+
               {/* Materials by Room */}
               {rooms.map((room, roomIndex) => {
                 const roomTypeInfo = ROOM_TYPES.find(r => r.value === room.room_type);
@@ -1054,7 +1165,6 @@ const QuotationFormPage = () => {
 
                     {room.works.map((work, workIndex) => {
                       const workTypeInfo = WORK_TYPES.find(w => w.value === work.work_type);
-                      // ✅ Utiliser la bonne clé
                       const materialKey = `${roomIndex}-${workIndex}`;
                       const materials = calculatedMaterials[materialKey]?.items || [];
 
@@ -1063,8 +1173,11 @@ const QuotationFormPage = () => {
                           <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                             <span className="text-xl">{workTypeInfo?.icon}</span>
                             <h3 className="font-medium text-gray-700">
-                              {workTypeInfo?.label} - {work.surface} {workTypeInfo?.unitLabel}
+                              {workTypeInfo?.label}
                             </h3>
+                            <span className="text-sm text-gray-500">
+                              — {work.longueur}m × {work.hauteur}m = {work.surface} m²
+                            </span>
                           </div>
 
                           {materials.length > 0 ? (
@@ -1131,7 +1244,7 @@ const QuotationFormPage = () => {
                               </table>
                             </div>
                           ) : (
-                            <p className="text-gray-500 italic">Aucun matériau calculé</p>
+                            <p className="text-gray-500 italic">Aucun matériau calculé - vérifiez les dimensions</p>
                           )}
                         </div>
                       );

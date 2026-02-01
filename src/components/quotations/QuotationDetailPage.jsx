@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import DashboardLayout from '../layout/DashboardLayout';
+import DashboardLayout from '../../components/layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
+import QRCodePdf from '../QRCodePdf';
 
 // Icons
 const ArrowLeftIcon = ({ className }) => (
@@ -54,6 +55,12 @@ const ArrowDownTrayIcon = ({ className }) => (
   </svg>
 );
 
+const InformationCircleIcon = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+  </svg>
+);
+
 // Room type icons
 const ROOM_ICONS = {
   salon_sejour: '🛋️',
@@ -67,12 +74,44 @@ const ROOM_ICONS = {
   autre: '📦',
 };
 
-// Work type icons
-const WORK_ICONS = {
-  habillage_mur: '🧱',
-  plafond_ba13: '⬆️',
-  cloison: '🚪',
-  gaine_creuse: '📏',
+// ✅ Work type icons et labels - DTU 25.41
+const WORK_TYPES = {
+  habillage_mur: { 
+    icon: '🧱', 
+    label: 'Habillage BA13 / Contre-cloison',
+    description: 'Ouvrage vertical – 1 face'
+  },
+  cloison_simple: { 
+    icon: '🚪', 
+    label: 'Cloison simple ossature',
+    description: 'M48 / M70 / M90'
+  },
+  cloison_double: { 
+    icon: '🚪', 
+    label: 'Cloison double ossature',
+    description: 'Épaisseur ≥ 140mm'
+  },
+  gaine_technique: { 
+    icon: '📏', 
+    label: 'Gaine technique BA13',
+    description: 'Ouvrage vertical technique'
+  },
+  plafond_ba13: { 
+    icon: '⬆️', 
+    label: 'Plafond BA13',
+    description: 'Sur ossature métallique'
+  },
+  // Anciens types pour compatibilité
+  cloison: { 
+    icon: '🚪', 
+    label: 'Cloison',
+    description: ''
+  },
+  gaine_creuse: { 
+    icon: '📏', 
+    label: 'Gaine creuse',
+    description: ''
+  },
 };
 
 // Status config
@@ -122,20 +161,6 @@ const QuotationDetailPage = () => {
   }, [id]);
 
   // Actions
-//   const handleDuplicate = async () => {
-//     setActionLoading(true);
-//     try {
-//       const response = await quotationAPI.duplicate(id);
-//       if (response.data?.data?.id) {
-//         navigate(`/quotations/${response.data.data.id}`);
-//       }
-//     } catch (err) {
-//       alert('Erreur lors de la duplication');
-//     } finally {
-//       setActionLoading(false);
-//     }
-//   };
-
   const handleStatusChange = async (newStatus) => {
     setActionLoading(true);
     try {
@@ -147,10 +172,6 @@ const QuotationDetailPage = () => {
       setActionLoading(false);
     }
   };
-
-//   const handlePrint = () => {
-//     window.print();
-//   };
 
   const handleDownloadPdf = async () => {
     setActionLoading(true);
@@ -175,13 +196,6 @@ const QuotationDetailPage = () => {
     }
   };
 
-  const handleOpenPdf = () => {
-    // Open PDF in new tab
-    const token = localStorage.getItem('token');
-    const pdfUrl = quotationAPI.getPdfUrl(id);
-    window.open(pdfUrl, '_blank');
-  };
-
   // Format helpers
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -197,6 +211,24 @@ const QuotationDetailPage = () => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount || 0);
+  };
+
+  // ✅ Helper pour obtenir les infos du type de travail
+  const getWorkTypeInfo = (workType) => {
+    return WORK_TYPES[workType] || { icon: '🔧', label: workType, description: '' };
+  };
+
+  // ✅ Helper pour formater les dimensions
+  const formatDimensions = (work) => {
+    const isPlafond = work.work_type === 'plafond_ba13';
+    
+    if (work.longueur && work.hauteur) {
+      const label1 = isPlafond ? 'L' : 'L';
+      const label2 = isPlafond ? 'l' : 'H';
+      return `${label1}=${work.longueur}m × ${label2}=${work.hauteur}m`;
+    }
+    
+    return null;
   };
 
   // Loading state
@@ -256,14 +288,6 @@ const QuotationDetailPage = () => {
           <div className="flex flex-wrap gap-2">
             {quotation.status === 'draft' && (
               <>
-                {/* <button
-                  onClick={() => handleStatusChange('sent')}
-                  disabled={actionLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  <PaperAirplaneIcon className="w-4 h-4" />
-                  Envoyer
-                </button> */}
                 <Link
                   to={`/quotations/${id}/edit`}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
@@ -295,15 +319,6 @@ const QuotationDetailPage = () => {
               </>
             )}
             
-            {/* <button
-              onClick={handleDuplicate}
-              disabled={actionLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              <DocumentDuplicateIcon className="w-4 h-4" />
-              Dupliquer
-            </button> */}
-            
             <button
               onClick={handleDownloadPdf}
               disabled={actionLoading}
@@ -313,17 +328,18 @@ const QuotationDetailPage = () => {
               <ArrowDownTrayIcon className="w-4 h-4" />
               PDF
             </button>
-            
-            {/* <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <PrinterIcon className="w-4 h-4" />
-              Imprimer
-            </button> */}
           </div>
         </div>
 
+        {/* ✅ DTU Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 print:hidden">
+          <div className="flex items-start gap-3">
+            <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-800">
+              <strong>Mention DTU 25.41 :</strong> Les calculs et quantités de ce devis sont établis conformément aux règles de calcul et de mise en œuvre du DTU 25.41. Ils sont destinés à un usage de simulation et peuvent être ajustés selon les contraintes réelles du chantier.
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -369,49 +385,91 @@ const QuotationDetailPage = () => {
                   </span>
                 </h2>
 
-                {room.works?.map((work, workIndex) => (
-                  <div key={workIndex} className="mb-6 last:mb-0">
-                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-                      <span className="text-xl">{WORK_ICONS[work.work_type] || '🔧'}</span>
-                      <h3 className="font-medium text-gray-700">
-                        {work.work_type_label} - {work.surface} {work.unit_label}
-                      </h3>
-                      <span className="text-sm text-gray-500 ml-auto">
-                        {formatAmount(work.subtotal_ht)} DH
-                      </span>
-                    </div>
+                {room.works?.map((work, workIndex) => {
+                  const workTypeInfo = getWorkTypeInfo(work.work_type);
+                  const dimensions = formatDimensions(work);
+                  const isPlafond = work.work_type === 'plafond_ba13';
+                  
+                  return (
+                    <div key={workIndex} className="mb-6 last:mb-0">
+                      {/* ✅ Work Header avec dimensions DTU */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 pb-3 border-b border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{workTypeInfo.icon}</span>
+                          <div>
+                            <h3 className="font-medium text-gray-700">
+                              {work.work_type_label || workTypeInfo.label}
+                            </h3>
+                            {workTypeInfo.description && (
+                              <p className="text-xs text-gray-500">{workTypeInfo.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="sm:ml-auto flex flex-wrap items-center gap-3 text-sm">
+                          {/* ✅ Afficher les dimensions si disponibles */}
+                          {dimensions && (
+                            <span className="px-2 py-1 bg-gray-100 rounded text-gray-600">
+                              {dimensions}
+                            </span>
+                          )}
+                          <span className="px-2 py-1 bg-blue-50 rounded text-blue-700 font-medium">
+                            {work.surface} {work.unit_label || 'm²'}
+                          </span>
+                          <span className="font-medium text-gray-700">
+                            {formatAmount(work.subtotal_ht)} DH
+                          </span>
+                        </div>
+                      </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="text-left py-2 px-3 font-medium text-gray-600">Matériau</th>
-                            <th className="text-center py-2 px-3 font-medium text-gray-600">Qté</th>
-                            <th className="text-center py-2 px-3 font-medium text-gray-600">Unité</th>
-                            <th className="text-right py-2 px-3 font-medium text-gray-600">P.U.</th>
-                            <th className="text-right py-2 px-3 font-medium text-gray-600">Total HT</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {work.items?.map((item, itemIndex) => (
-                            <tr key={itemIndex} className={`border-b border-gray-100 ${item.is_modified ? 'bg-yellow-50' : ''}`}>
-                              <td className="py-2 px-3 text-gray-900">
-                                {item.designation}
-                                {item.is_modified && (
-                                  <span className="ml-2 text-xs text-yellow-600">(modifié)</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-3 text-center text-gray-600">{item.quantity_adjusted}</td>
-                              <td className="py-2 px-3 text-center text-gray-600">{item.unit}</td>
-                              <td className="py-2 px-3 text-right text-gray-600">{formatAmount(item.unit_price)} DH</td>
-                              <td className="py-2 px-3 text-right font-medium text-gray-900">{formatAmount(item.total_ht)} DH</td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="text-left py-2 px-3 font-medium text-gray-600">Matériau</th>
+                              <th className="text-center py-2 px-3 font-medium text-gray-600">Qté calc.</th>
+                              <th className="text-center py-2 px-3 font-medium text-gray-600">Qté ajust.</th>
+                              <th className="text-center py-2 px-3 font-medium text-gray-600">Unité</th>
+                              <th className="text-right py-2 px-3 font-medium text-gray-600">P.U.</th>
+                              <th className="text-right py-2 px-3 font-medium text-gray-600">Total HT</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {work.items?.map((item, itemIndex) => (
+                              <tr key={itemIndex} className={`border-b border-gray-100 ${item.is_modified ? 'bg-yellow-50' : ''}`}>
+                                <td className="py-2 px-3 text-gray-900">
+                                  {item.designation}
+                                  {item.is_modified && (
+                                    <span className="ml-2 text-xs text-yellow-600 font-medium">(modifié)</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 text-center text-gray-500">
+                                  {item.quantity_calculated}
+                                </td>
+                                <td className={`py-2 px-3 text-center ${item.is_modified ? 'font-medium text-yellow-700' : 'text-gray-600'}`}>
+                                  {item.quantity_adjusted}
+                                </td>
+                                <td className="py-2 px-3 text-center text-gray-600">{item.unit}</td>
+                                <td className="py-2 px-3 text-right text-gray-600">{formatAmount(item.unit_price)} DH</td>
+                                <td className="py-2 px-3 text-right font-medium text-gray-900">{formatAmount(item.total_ht)} DH</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-50">
+                              <td colSpan="5" className="py-2 px-3 text-right font-medium text-gray-700">
+                                Sous-total {workTypeInfo.label}:
+                              </td>
+                              <td className="py-2 px-3 text-right font-bold text-gray-900">
+                                {formatAmount(work.subtotal_ht)} DH
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -421,6 +479,20 @@ const QuotationDetailPage = () => {
             {/* Totals Card */}
             <div className="bg-white rounded-xl shadow p-6 print:shadow-none print:border print:border-gray-200 sticky top-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Récapitulatif</h2>
+              
+              {/* ✅ Résumé des travaux */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <p className="text-sm font-medium text-gray-700 mb-2">Travaux inclus :</p>
+                <div className="space-y-1">
+                  {quotation.rooms?.map((room, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <span>{ROOM_ICONS[room.room_type] || '📦'}</span>
+                      <span>{room.display_name || room.room_name}</span>
+                      <span className="text-gray-400">({room.works?.length || 0} ouvrage{room.works?.length > 1 ? 's' : ''})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
               
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -457,6 +529,31 @@ const QuotationDetailPage = () => {
                 </div>
               )}
             </div>
+
+            {/* ✅ DTU Info Card */}
+            <div className="bg-gray-50 rounded-xl p-4 print:hidden">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <InformationCircleIcon className="w-4 h-4" />
+                Paramètres DTU 25.41
+              </h3>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li>• Entraxe standard : 60 cm</li>
+                <li>• Plaque BA13 : 120 × 250 cm (3 m²)</li>
+                <li>• Profils : 3 m de longueur</li>
+                <li>• Arrondi : toujours supérieur</li>
+              </ul>
+            </div>
+
+            {/* ✅ QR Code Card - Accès rapide au PDF */}
+            {quotation.public_pdf_url && (
+              <div className="print:hidden">
+                <QRCodePdf 
+                  publicPdfUrl={quotation.public_pdf_url}
+                  reference={quotation.reference}
+                  size={160}
+                />
+              </div>
+            )}
 
             {/* Notes */}
             {quotation.notes && (
