@@ -163,17 +163,26 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
   switch (workType) {
     case 'habillage_mur':
-      add(plaque.designation, arrondiSup(surface / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
-      add('Montant M48', arrondiSup((L / DTU.ENTRAXE) + 1), 'unité', PRIX_UNITAIRES.montant_48);
-      add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
-      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
-      add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
-      add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       {
+        // Plaques
+        add(plaque.designation, arrondiSup(surface / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
+        
+        // Montants : lignes verticales × montants par ligne (si H > 3m)
+        const nbLignesMontants = arrondiSup((L / 0.30) + 1);
+        const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
+        const totalMontants = nbLignesMontants * montantsParLigne;
+        add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
+        
+        // Rails : haut + bas
+        add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
+        
+        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+        add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+        add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
         const bande = bandeToRouleaux(arrondiSup(surface * 3));
         add(bande.designation, bande.quantity, 'rlx', bande.prix);
+        add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
       }
-      add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
       break;
 
     case 'cloison':
@@ -183,17 +192,28 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
         const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
         const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
 
+        // Plaques (2 faces)
         add(plaque.designation, arrondiSup((surface * 2) / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
 
+        // Montants : lignes verticales × montants par ligne (si H > 3m)
+        const nbLignesMontants = arrondiSup((L / 0.30) + 1);
+        const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
+        const totalMontants = nbLignesMontants * montantsParLigne;
+        
+        // Rails : haut + bas
+        const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+
         if (isDouble) {
-          add(montantLabel, arrondiSup(2 * ((L / DTU.ENTRAXE) + 1)), 'unité', PRIX_UNITAIRES[config.montant]);
-          add(railLabel, arrondiSup(2 * ((L * 2) / DTU.PROFIL_LONGUEUR)), 'unité', PRIX_UNITAIRES[config.rail]);
+          // Double ossature : × 2
+          add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
+          add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
           add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant);
           add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
           add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
         } else {
-          add(montantLabel, arrondiSup((L / DTU.ENTRAXE) + 1), 'unité', PRIX_UNITAIRES[config.montant]);
-          add(railLabel, arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES[config.rail]);
+          // Simple ossature
+          add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
+          add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
           add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
           add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
           add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
