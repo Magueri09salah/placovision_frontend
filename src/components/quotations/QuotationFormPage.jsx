@@ -163,10 +163,11 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       // Plaques
       add(plaque.designation, arrondiSup(surface / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
       
-      // Montants : lignes verticales × montants par ligne (si H > 3m)
-      const nbLignesMontants = arrondiSup((L / 0.30) + 1);
+      // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
+      // Doublement des lignes intérieures, retrait de 2 par ligne
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
       const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-      const totalMontants = nbLignesMontants * montantsParLigne;
+      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
       
       // Rails : haut + bas
@@ -190,10 +191,11 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       // Plaques (2 faces)
       add(plaque.designation, arrondiSup((surface * 2) / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
 
-      // Montants : lignes verticales × montants par ligne (si H > 3m)
-      const nbLignesMontants = arrondiSup((L / 0.30) + 1);
+      // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
+      // Doublement des lignes intérieures, retrait de 2 par ligne
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
       const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-      const totalMontants = nbLignesMontants * montantsParLigne;
+      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
       
       // Rails : haut + bas
       const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
