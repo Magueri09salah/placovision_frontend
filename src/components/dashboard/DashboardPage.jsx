@@ -90,21 +90,21 @@ const KPICard = ({ title, value, subtitle, icon: Icon, trend, trendValue, color 
 
 // ============ COMPOSANT DEVIS RECENT ============
 const RecentQuotation = ({ quotation }) => {
-  const statusColors = {
-    draft: 'bg-neutral-100 text-neutral-600',
-    sent: 'bg-blue-100 text-blue-700',
-    accepted: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-    expired: 'bg-orange-100 text-orange-700',
-  };
+  // const statusColors = {
+  //   draft: 'bg-neutral-100 text-neutral-600',
+  //   sent: 'bg-blue-100 text-blue-700',
+  //   accepted: 'bg-green-100 text-green-700',
+  //   rejected: 'bg-red-100 text-red-700',
+  //   expired: 'bg-orange-100 text-orange-700',
+  // };
 
-  const statusLabels = {
-    draft: 'Brouillon',
-    sent: 'Envoyé',
-    accepted: 'Accepté',
-    rejected: 'Refusé',
-    expired: 'Expiré',
-  };
+  // const statusLabels = {
+  //   draft: 'Brouillon',
+  //   sent: 'Envoyé',
+  //   accepted: 'Accepté',
+  //   rejected: 'Refusé',
+  //   expired: 'Expiré',
+  // };
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('fr-MA', {
@@ -122,9 +122,9 @@ const RecentQuotation = ({ quotation }) => {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-neutral-800">{quotation.reference}</span>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[quotation.status]}`}>
+          {/* <span className={`px-2 py-0.5 rounded-full text-xs font-medium `}>
             {statusLabels[quotation.status]}
-          </span>
+          </span> */}
         </div>
         <p className="text-sm text-neutral-500 truncate">{quotation.client_name}</p>
       </div>
@@ -285,7 +285,7 @@ const DashboardPage = () => {
         </div>
 
         {/* ============ KPI CARDS ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <KPICard
             title="Devis créés"
             value={stats?.quotations_this_month || 0}
@@ -304,14 +304,14 @@ const DashboardPage = () => {
             trendValue={`${stats?.conversion_trend > 0 ? '+' : ''}${stats?.conversion_trend || 0}% vs mois dernier`}
             color="green"
           />
-          {/* <KPICard
+          <KPICard
             title="En attente"
             value={stats?.pending || 0}
             subtitle={formatFullMoney(stats?.pending_amount || 0)}
             icon={ClockIcon}
             color="orange"
-          /> */}
-        </div>
+          />
+        </div> */}
 
         {/* ============ CHARTS ROW ============ */}
         <div className="grid grid-cols-1 gap-6">
@@ -457,9 +457,9 @@ const DashboardPage = () => {
         </div>
 
         {/* ============ QUICK ACTIONS & INFO ============ */}
-        <div className="grid grid-cols-1 gap-6">
+        {/* <div className="grid grid-cols-1 gap-6"> */}
           {/* Quick Actions */}
-          <Card>
+          {/* <Card>
             <h2 className="text-lg font-semibold text-neutral-800 mb-4">
               Actions rapides
             </h2>
@@ -501,8 +501,8 @@ const DashboardPage = () => {
                 <span className="text-sm font-medium text-green-600">Acceptés ({stats?.accepted || 0})</span>
               </Link>
             </div>
-          </Card>
-        </div>
+          </Card> */}
+        {/* </div> */}
       </div>
     </DashboardLayout>
   );
