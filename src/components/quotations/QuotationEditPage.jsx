@@ -1,5 +1,5 @@
 // src/pages/QuotationEditPage.jsx
-// VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison
+// VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes)
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
@@ -80,6 +80,11 @@ const EPAISSEUR_OPTIONS = [
   { value: '140', label: '≥ 140 mm', sublabel: 'Double M48/R48', montant: 'montant_48', rail: 'rail_48', isDouble: true },
 ];
 
+const OUVERTURE_TYPES = [
+  { value: 'fenetre', label: 'Fenêtre', icon: '🪟' },
+  { value: 'porte', label: 'Porte', icon: '🚪' },
+];
+
 const STEPS = [
   { id: 1, name: 'Client' },
   { id: 2, name: 'Pièces' },
@@ -138,10 +143,21 @@ const bandeToRouleaux = (ml) => {
   return { designation: 'Bande à joint 300m', quantity: Math.ceil(ml / 300), prix: PRIX_UNITAIRES.bande_joint_300 };
 };
 
-const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaisseur = '72') => {
+const calculateOuverturesSurface = (ouvertures = []) => {
+  return ouvertures.reduce((total, ouv) => {
+    const largeur = parseFloat(ouv.largeur) || 0;
+    const hauteur = parseFloat(ouv.hauteur) || 0;
+    return total + (largeur * hauteur);
+  }, 0);
+};
+
+const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaisseur = '72', ouvertures = []) => {
   const L = parseFloat(longueur) || 0;
   const H = parseFloat(hauteur) || 0;
-  const surface = L * H;
+  const surfaceBrute = L * H;
+  const surfaceOuvertures = calculateOuverturesSurface(ouvertures);
+  const surface = Math.max(0, surfaceBrute - surfaceOuvertures);
+  
   if (surface <= 0) return [];
 
   const plaque = PLAQUE_BY_ROOM[roomType] || PLAQUE_BY_ROOM.autre;
@@ -162,87 +178,66 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
   };
 
   switch (workType) {
-    case 'habillage_mur':
-      {
-        // Plaques
-        add(plaque.designation, arrondiSup(surface / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
-        
-        // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
-        // Doublement des lignes intérieures, retrait de 2 par ligne
-        const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
-        const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-        const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
-        add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
-        
-        // Rails : haut + bas
-        add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
-        
+    case 'habillage_mur': {
+      add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
+      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
+      add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
+      add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
+      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+      add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+      add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+      const bande = bandeToRouleaux(arrondiSup(surface * 3));
+      add(bande.designation, bande.quantity, 'rlx', bande.prix);
+      add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
+      break;
+    }
+
+    case 'cloison': {
+      const config = EPAISSEUR_OPTIONS.find(e => e.value === epaisseur) || EPAISSEUR_OPTIONS[0];
+      const isDouble = config.isDouble;
+      const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
+      const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
+
+      add(plaque.designation, arrondiSup(surface * 2), 'm²', plaque.prix);
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
+      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
+      const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+
+      if (isDouble) {
+        add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
+        add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
+        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant);
+        add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+        add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
+      } else {
+        add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
+        add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
         add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
-        add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
-        add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
-        const bande = bandeToRouleaux(arrondiSup(surface * 3));
-        add(bande.designation, bande.quantity, 'rlx', bande.prix);
-        add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
+        add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+        add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       }
+
+      const bande = bandeToRouleaux(arrondiSup(surface * 6));
+      add(bande.designation, bande.quantity, 'rlx', bande.prix);
+      add('Enduit', kgToSacs(isDouble ? surface * 1.2 : surface), 'sac', PRIX_UNITAIRES.enduit_sac);
       break;
+    }
 
-    case 'cloison':
-      {
-        const config = EPAISSEUR_OPTIONS.find(e => e.value === epaisseur) || EPAISSEUR_OPTIONS[0];
-        const isDouble = config.isDouble;
-        const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
-        const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
-
-        // Plaques (2 faces)
-        add(plaque.designation, arrondiSup((surface * 2) / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
-
-        // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
-        // Doublement des lignes intérieures, retrait de 2 par ligne
-        const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
-        const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-        const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
-        
-        // Rails : haut + bas
-        const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
-
-        if (isDouble) {
-          // Double ossature : × 2
-          add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
-          add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-          add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant);
-          add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
-          add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
-        } else {
-          // Simple ossature
-          add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
-          add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-          add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
-          add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
-          add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
-        }
-
-        const bande = bandeToRouleaux(arrondiSup(surface * 6));
-        add(bande.designation, bande.quantity, 'rlx', bande.prix);
-        add('Enduit', kgToSacs(isDouble ? surface * 1.2 : surface), 'sac', PRIX_UNITAIRES.enduit_sac);
-      }
+    case 'plafond_ba13': {
+      const l = H;
+      add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
+      add('Fourrure', arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.fourrure);
+      add('Suspente', arrondiSup(surface * 2.5), 'unité', PRIX_UNITAIRES.suspente);
+      add('Cornière périphérique', arrondiSup(((L + l) * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.corniere);
+      add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 22)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
+      const bande = bandeToRouleaux(arrondiSup(surface * 3));
+      add(bande.designation, bande.quantity, 'rlx', bande.prix);
+      add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
       break;
-
-    case 'plafond_ba13':
-      {
-        const l = H;
-        add(plaque.designation, arrondiSup(surface / DTU.PLAQUE_SURFACE), 'unité', plaque.prix);
-        add('Fourrure', arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.fourrure);
-        add('Suspente', arrondiSup(surface * 2.5), 'unité', PRIX_UNITAIRES.suspente);
-        add('Cornière périphérique', arrondiSup(((L + l) * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.corniere);
-        add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 22)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
-        const bande = bandeToRouleaux(arrondiSup(surface * 3));
-        add(bande.designation, bande.quantity, 'rlx', bande.prix);
-        add('Enduit', kgToSacs(surface * 0.5), 'sac', PRIX_UNITAIRES.enduit_sac);
-      }
-      break;
-
-    default:
-      break;
+    }
   }
 
   return materials;
@@ -250,16 +245,14 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
 // ============ COMPOSANT PRINCIPAL ============
 const QuotationEditPage = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-
+  const { id } = useParams();
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
-  const [originalQuotation, setOriginalQuotation] = useState(null);
+  const [quotationReference, setQuotationReference] = useState('');
 
   const [clientInfo, setClientInfo] = useState({
     client_name: '',
@@ -273,17 +266,15 @@ const QuotationEditPage = () => {
   const [rooms, setRooms] = useState([]);
   const [calculatedMaterials, setCalculatedMaterials] = useState({});
 
-  // Load quotation
+  // Load quotation data
   useEffect(() => {
     const fetchQuotation = async () => {
-      setLoading(true);
       try {
-        const response = await quotationAPI.getOne(id);
-        const quotation = response.data?.data;
-        if (!quotation) { setLoadError('Devis introuvable'); return; }
-        if (quotation.status !== 'draft') { setLoadError('Ce devis ne peut plus être modifié.'); return; }
-        
-        setOriginalQuotation(quotation);
+        setLoading(true);
+        const response = await quotationAPI.getById(id);
+        const quotation = response.data.data;
+
+        setQuotationReference(quotation.reference);
         setClientInfo({
           client_name: quotation.client_name || '',
           client_email: quotation.client_email || '',
@@ -293,72 +284,87 @@ const QuotationEditPage = () => {
           site_postal_code: quotation.site_postal_code || '',
         });
 
-        if (quotation.rooms?.length > 0) {
-          const loadedRooms = quotation.rooms.map(room => ({
-            room_type: room.room_type,
-            room_name: room.room_name || room.display_name,
-            works: (room.works || []).map(work => ({
+        const loadedRooms = (quotation.rooms || []).map(room => ({
+          room_type: room.room_type,
+          room_name: room.room_name || ROOM_TYPES.find(r => r.value === room.room_type)?.label || room.room_type,
+          works: (room.works || []).map(work => {
+            const ouvertures = work.ouvertures || [];
+            const L = parseFloat(work.longueur) || 0;
+            const H = parseFloat(work.hauteur) || 0;
+            const surfaceBrute = L * H;
+            const surfaceOuvertures = calculateOuverturesSurface(ouvertures);
+            return {
               work_type: work.work_type,
               epaisseur: work.epaisseur || '72',
               longueur: work.longueur !== null && work.longueur !== undefined ? String(work.longueur) : '',
               hauteur: work.hauteur !== null && work.hauteur !== undefined ? String(work.hauteur) : '',
               surface: work.surface || 0,
-            })),
-          }));
-          setRooms(loadedRooms);
+              surface_brute: Math.round(surfaceBrute * 100) / 100,
+              surface_ouvertures: Math.round(surfaceOuvertures * 100) / 100,
+              ouvertures: ouvertures,
+            };
+          }),
+        }));
 
-          const initialMaterials = {};
-          quotation.rooms.forEach((room, roomIndex) => {
-            (room.works || []).forEach((work, workIndex) => {
-              const key = `${roomIndex}-${workIndex}`;
-              if (work.items?.length > 0) {
-                initialMaterials[key] = {
-                  items: work.items.map(item => ({
-                    id: item.id,
-                    designation: item.designation,
-                    quantity_calculated: item.quantity_calculated,
-                    quantity_adjusted: item.quantity_adjusted,
-                    unit: item.unit,
-                    unit_price: parseFloat(item.unit_price),
-                    total_ht: parseFloat(item.total_ht),
-                    is_modified: item.is_modified,
-                  })),
-                  userModified: work.items.some(item => item.is_modified),
-                };
-              }
-            });
+        setRooms(loadedRooms);
+
+        // Load existing materials
+        const initialMaterials = {};
+        loadedRooms.forEach((room, roomIndex) => {
+          room.works.forEach((work, workIndex) => {
+            const key = `${roomIndex}-${workIndex}`;
+            const originalWork = quotation.rooms?.[roomIndex]?.works?.[workIndex];
+            if (originalWork?.items && originalWork.items.length > 0) {
+              initialMaterials[key] = {
+                items: originalWork.items.map((item, idx) => ({
+                  id: `${work.work_type}-${idx}`,
+                  designation: item.designation,
+                  quantity_calculated: item.quantity_calculated,
+                  quantity_adjusted: item.quantity_adjusted,
+                  unit: item.unit,
+                  unit_price: parseFloat(item.unit_price) || 0,
+                  total_ht: (item.quantity_adjusted || item.quantity_calculated) * (parseFloat(item.unit_price) || 0),
+                  is_modified: item.is_modified || item.quantity_adjusted !== item.quantity_calculated,
+                })),
+                userModified: true,
+              };
+            }
           });
-          setCalculatedMaterials(initialMaterials);
-        }
-      } catch (err) {
-        setLoadError(err.response?.status === 404 ? 'Devis introuvable' : 'Impossible de charger le devis');
+        });
+        setCalculatedMaterials(initialMaterials);
+
+      } catch (error) {
+        console.error('Error loading quotation:', error);
+        setFormError('Impossible de charger le devis.');
       } finally {
         setLoading(false);
       }
     };
-    fetchQuotation();
+
+    if (id) fetchQuotation();
   }, [id]);
 
-  // Recalculate materials
+  // Recalculate materials when rooms change
   useEffect(() => {
     if (loading) return;
+
     const newMaterials = {};
     rooms.forEach((room, roomIndex) => {
       room.works.forEach((work, workIndex) => {
         const key = `${roomIndex}-${workIndex}`;
-        const existing = calculatedMaterials[key];
-        const materials = calculateMaterialsForWork(work.work_type, work.longueur || 0, work.hauteur || 0, room.room_type, work.epaisseur || '72');
-        if (!existing || !existing.userModified) {
+        const existingMaterials = calculatedMaterials[key];
+        const materials = calculateMaterialsForWork(
+          work.work_type,
+          work.longueur,
+          work.hauteur,
+          room.room_type,
+          work.epaisseur || '72',
+          work.ouvertures || []
+        );
+        if (!existingMaterials || !existingMaterials.userModified) {
           newMaterials[key] = { items: materials, userModified: false };
         } else {
-          newMaterials[key] = {
-            ...existing,
-            items: existing.items.map((item, i) => 
-              item.is_modified 
-                ? { ...item, quantity_calculated: materials[i]?.quantity_calculated || item.quantity_calculated }
-                : (materials[i] || item)
-            ),
-          };
+          newMaterials[key] = existingMaterials;
         }
       });
     });
@@ -379,7 +385,7 @@ const QuotationEditPage = () => {
     };
   }, [calculatedMaterials]);
 
-  // Handlers
+  // ============ HANDLERS ============
   const handleClientChange = (e) => {
     const { name, value } = e.target;
     setClientInfo(prev => ({ ...prev, [name]: value }));
@@ -393,15 +399,6 @@ const QuotationEditPage = () => {
 
   const removeRoom = (index) => {
     setRooms(prev => prev.filter((_, i) => i !== index));
-    setCalculatedMaterials(prev => {
-      const newMaterials = {};
-      Object.entries(prev).forEach(([key, value]) => {
-        const [roomIdx, workIdx] = key.split('-').map(Number);
-        if (roomIdx < index) newMaterials[key] = value;
-        else if (roomIdx > index) newMaterials[`${roomIdx - 1}-${workIdx}`] = value;
-      });
-      return newMaterials;
-    });
   };
 
   const addWorkToRoom = (roomIndex, workType) => {
@@ -409,7 +406,14 @@ const QuotationEditPage = () => {
       if (i !== roomIndex) return room;
       return {
         ...room,
-        works: [...room.works, { work_type: workType, longueur: '', hauteur: '', surface: 0, epaisseur: '72' }],
+        works: [...room.works, { 
+          work_type: workType, 
+          longueur: '', 
+          hauteur: '', 
+          surface: 0, 
+          epaisseur: '72',
+          ouvertures: [] 
+        }],
       };
     }));
   };
@@ -424,10 +428,19 @@ const QuotationEditPage = () => {
           const updated = { ...work, [field]: value };
           const L = parseFloat(updated.longueur) || 0;
           const H = parseFloat(updated.hauteur) || 0;
-          return { ...updated, surface: Math.round(L * H * 100) / 100 };
+          const surfaceBrute = L * H;
+          const surfaceOuvertures = calculateOuverturesSurface(updated.ouvertures || []);
+          return { 
+            ...updated, 
+            surface: Math.round((surfaceBrute - surfaceOuvertures) * 100) / 100,
+            surface_brute: Math.round(surfaceBrute * 100) / 100,
+            surface_ouvertures: Math.round(surfaceOuvertures * 100) / 100
+          };
         }),
       };
     }));
+    const key = `${roomIndex}-${workIndex}`;
+    setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
   };
 
   const updateWorkEpaisseur = (roomIndex, workIndex, epaisseur) => {
@@ -442,24 +455,85 @@ const QuotationEditPage = () => {
     setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
   };
 
+  // ============ OUVERTURES HANDLERS ============
+  const addOuverture = (roomIndex, workIndex) => {
+    setRooms(prev => prev.map((room, i) => {
+      if (i !== roomIndex) return room;
+      return {
+        ...room,
+        works: room.works.map((work, j) => {
+          if (j !== workIndex) return work;
+          return {
+            ...work,
+            ouvertures: [...(work.ouvertures || []), { type: 'fenetre', largeur: '', hauteur: '' }]
+          };
+        }),
+      };
+    }));
+  };
+
+  const updateOuverture = (roomIndex, workIndex, ouvertureIndex, field, value) => {
+    setRooms(prev => prev.map((room, i) => {
+      if (i !== roomIndex) return room;
+      return {
+        ...room,
+        works: room.works.map((work, j) => {
+          if (j !== workIndex) return work;
+          const newOuvertures = [...(work.ouvertures || [])];
+          newOuvertures[ouvertureIndex] = { ...newOuvertures[ouvertureIndex], [field]: value };
+          
+          const L = parseFloat(work.longueur) || 0;
+          const H = parseFloat(work.hauteur) || 0;
+          const surfaceBrute = L * H;
+          const surfaceOuvertures = calculateOuverturesSurface(newOuvertures);
+          
+          return { 
+            ...work, 
+            ouvertures: newOuvertures,
+            surface: Math.round((surfaceBrute - surfaceOuvertures) * 100) / 100,
+            surface_brute: Math.round(surfaceBrute * 100) / 100,
+            surface_ouvertures: Math.round(surfaceOuvertures * 100) / 100
+          };
+        }),
+      };
+    }));
+    const key = `${roomIndex}-${workIndex}`;
+    setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
+  };
+
+  const removeOuverture = (roomIndex, workIndex, ouvertureIndex) => {
+    setRooms(prev => prev.map((room, i) => {
+      if (i !== roomIndex) return room;
+      return {
+        ...room,
+        works: room.works.map((work, j) => {
+          if (j !== workIndex) return work;
+          const newOuvertures = (work.ouvertures || []).filter((_, k) => k !== ouvertureIndex);
+          
+          const L = parseFloat(work.longueur) || 0;
+          const H = parseFloat(work.hauteur) || 0;
+          const surfaceBrute = L * H;
+          const surfaceOuvertures = calculateOuverturesSurface(newOuvertures);
+          
+          return { 
+            ...work, 
+            ouvertures: newOuvertures,
+            surface: Math.round((surfaceBrute - surfaceOuvertures) * 100) / 100,
+            surface_brute: Math.round(surfaceBrute * 100) / 100,
+            surface_ouvertures: Math.round(surfaceOuvertures * 100) / 100
+          };
+        }),
+      };
+    }));
+    const key = `${roomIndex}-${workIndex}`;
+    setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
+  };
+
   const removeWork = (roomIndex, workIndex) => {
     setRooms(prev => prev.map((room, i) => {
       if (i !== roomIndex) return room;
       return { ...room, works: room.works.filter((_, j) => j !== workIndex) };
     }));
-    setCalculatedMaterials(prev => {
-      const newMaterials = {};
-      Object.entries(prev).forEach(([key, value]) => {
-        const [rIdx, wIdx] = key.split('-').map(Number);
-        if (rIdx === roomIndex) {
-          if (wIdx < workIndex) newMaterials[key] = value;
-          else if (wIdx > workIndex) newMaterials[`${rIdx}-${wIdx - 1}`] = value;
-        } else {
-          newMaterials[key] = value;
-        }
-      });
-      return newMaterials;
-    });
   };
 
   const updateMaterialQuantity = (materialKey, itemIndex, newQuantity) => {
@@ -497,15 +571,12 @@ const QuotationEditPage = () => {
     });
   };
 
-  // Validation
+  // ============ VALIDATION ============
   const validateStep1 = () => {
     const newErrors = {};
     if (!clientInfo.client_name.trim()) newErrors.client_name = 'Le nom du client est requis';
     if (!clientInfo.site_address.trim()) newErrors.site_address = "L'adresse du chantier est requise";
     if (!clientInfo.site_city.trim()) newErrors.site_city = 'La ville est requise';
-    if (clientInfo.client_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientInfo.client_email)) {
-      newErrors.client_email = 'Email invalide';
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -540,9 +611,6 @@ const QuotationEditPage = () => {
     try {
       const payload = {
         ...clientInfo,
-        client_email: clientInfo.client_email || null,
-        client_phone: clientInfo.client_phone || null,
-        site_postal_code: clientInfo.site_postal_code || null,
         rooms: rooms.map((room, roomIndex) => ({
           room_type: room.room_type,
           room_name: room.room_name,
@@ -552,6 +620,7 @@ const QuotationEditPage = () => {
             longueur: parseFloat(work.longueur) || 0,
             hauteur: parseFloat(work.hauteur) || 0,
             surface: parseFloat(work.surface) || 0,
+            ouvertures: work.ouvertures || [],
             items: (calculatedMaterials[`${roomIndex}-${workIndex}`]?.items || []).map(item => ({
               designation: item.designation,
               quantity_calculated: item.quantity_calculated,
@@ -565,45 +634,23 @@ const QuotationEditPage = () => {
       await quotationAPI.update(id, payload);
       navigate(`/quotations/${id}`);
     } catch (error) {
-      if (error.response?.status === 422) {
-        setErrors(error.response.data.errors || {});
-        setFormError('Veuillez corriger les erreurs.');
-      } else if (error.response?.status === 401) {
-        navigate('/login');
-      } else {
-        setFormError(error.response?.data?.message || 'Une erreur est survenue.');
-      }
+      setFormError(error.response?.data?.message || 'Erreur lors de la mise à jour.');
     } finally {
       setSaving(false);
     }
   };
 
+  const getOuvertureLabel = (type) => OUVERTURE_TYPES.find(o => o.value === type)?.label || type;
   const getEpaisseurLabel = (epaisseur) => EPAISSEUR_OPTIONS.find(e => e.value === epaisseur)?.label || 'Standard';
 
-  // Loading state
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin w-10 h-10 border-4 border-red-700 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500">Chargement du devis...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-700 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement du devis...</p>
           </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Error state
-  if (loadError) {
-    return (
-      <DashboardLayout>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-          <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-700 mb-4">{loadError}</p>
-          <Link to="/quotations" className="text-red-700 font-medium hover:underline">
-            ← Retour à la liste des devis
-          </Link>
         </div>
       </DashboardLayout>
     );
@@ -621,10 +668,7 @@ const QuotationEditPage = () => {
                 <ArrowLeftIcon className="w-5 h-5" />
                 <span>Retour</span>
               </Link>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Modifier le devis</h1>
-                <p className="text-sm text-gray-500">{originalQuotation?.reference}</p>
-              </div>
+              <h1 className="text-xl font-bold text-gray-900">Modifier {quotationReference}</h1>
             </div>
           </div>
         </div>
@@ -671,8 +715,7 @@ const QuotationEditPage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" name="client_email" value={clientInfo.client_email} onChange={handleClientChange} className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 ${errors.client_email ? 'border-red-500' : 'border-gray-300'}`} />
-                    {errors.client_email && <p className="mt-1 text-sm text-red-500">{errors.client_email}</p>}
+                    <input type="email" name="client_email" value={clientInfo.client_email} onChange={handleClientChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
@@ -751,7 +794,7 @@ const QuotationEditPage = () => {
             </div>
           )}
 
-          {/* Step 3: Work Types */}
+          {/* Step 3: Work Types with Ouvertures */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -759,7 +802,7 @@ const QuotationEditPage = () => {
                   <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800">
                     <p className="font-medium mb-1">Calcul conforme au DTU 25.41</p>
-                    <p>Saisissez les dimensions réelles (Longueur × Hauteur en mètres).</p>
+                    <p>Saisissez les dimensions réelles. Pour les murs et cloisons, vous pouvez ajouter des ouvertures (fenêtres/portes) qui seront déduites de la surface.</p>
                   </div>
                 </div>
               </div>
@@ -804,6 +847,7 @@ const QuotationEditPage = () => {
                           const workTypeInfo = WORK_TYPES.find(w => w.value === work.work_type);
                           const isPlafond = work.work_type === 'plafond_ba13';
                           const isCloison = work.work_type === 'cloison';
+                          const supportsOuvertures = work.work_type === 'habillage_mur' || work.work_type === 'cloison';
 
                           return (
                             <div key={workIndex} className="p-4 bg-gray-50 rounded-lg">
@@ -820,7 +864,6 @@ const QuotationEditPage = () => {
                                 </button>
                               </div>
 
-                              {/* Épaisseur selector for cloison */}
                               {isCloison && (
                                 <div className="mb-4">
                                   <label className="block text-xs font-medium text-gray-600 mb-2">Épaisseur de la cloison</label>
@@ -840,8 +883,7 @@ const QuotationEditPage = () => {
                                 </div>
                               )}
 
-                              {/* Dimensions */}
-                              <div className="grid grid-cols-3 gap-4">
+                              <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">Longueur (L)</label>
                                   <div className="flex items-center gap-2">
@@ -857,10 +899,84 @@ const QuotationEditPage = () => {
                                   </div>
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">Surface calculée</label>
-                                  <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-700">{work.surface || 0} m²</div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Surface nette</label>
+                                  <div className="px-3 py-2 bg-green-100 rounded-lg text-sm font-medium text-green-700">{work.surface || 0} m²</div>
                                 </div>
                               </div>
+
+                              {supportsOuvertures && (
+                                <div className="border-t border-gray-200 pt-4 mt-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <label className="text-xs font-medium text-gray-600">Ouvertures (fenêtres / portes)</label>
+                                    <button
+                                      type="button"
+                                      onClick={() => addOuverture(roomIndex, workIndex)}
+                                      className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                    >
+                                      <PlusIcon className="w-4 h-4" />
+                                      Ajouter une ouverture
+                                    </button>
+                                  </div>
+
+                                  {work.ouvertures && work.ouvertures.length > 0 && (
+                                    <div className="space-y-2">
+                                      {work.ouvertures.map((ouverture, ouvertureIndex) => (
+                                        <div key={ouvertureIndex} className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200">
+                                          <select
+                                            value={ouverture.type}
+                                            onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', e.target.value)}
+                                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                          >
+                                            {OUVERTURE_TYPES.map((type) => (
+                                              <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
+                                            ))}
+                                          </select>
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              placeholder="Larg."
+                                              value={ouverture.largeur || ''}
+                                              onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
+                                              className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                                            />
+                                            <span className="text-gray-400 text-xs">×</span>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              placeholder="Haut."
+                                              value={ouverture.hauteur || ''}
+                                              onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
+                                              className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                                            />
+                                            <span className="text-gray-500 text-xs">m</span>
+                                          </div>
+                                          <span className="text-xs text-gray-500 ml-auto">
+                                            = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)}
+                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                          >
+                                            <TrashIcon className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      ))}
+                                      
+                                      {work.surface_ouvertures > 0 && (
+                                        <div className="flex justify-end gap-4 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-100">
+                                          <span>Surface brute: <strong>{work.surface_brute || 0} m²</strong></span>
+                                          <span>Ouvertures: <strong className="text-orange-600">-{work.surface_ouvertures || 0} m²</strong></span>
+                                          <span>Surface nette: <strong className="text-green-600">{work.surface || 0} m²</strong></span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -915,10 +1031,11 @@ const QuotationEditPage = () => {
                       const materialKey = `${roomIndex}-${workIndex}`;
                       const materials = calculatedMaterials[materialKey]?.items || [];
                       const isCloison = work.work_type === 'cloison';
+                      const hasOuvertures = work.ouvertures && work.ouvertures.length > 0;
 
                       return (
                         <div key={workIndex} className="mb-6 last:mb-0">
-                          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                          <div className="flex flex-wrap items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                             <span className="text-xl">{workTypeInfo?.icon}</span>
                             <h3 className="font-medium text-gray-700">
                               {workTypeInfo?.label}
@@ -927,7 +1044,22 @@ const QuotationEditPage = () => {
                               )}
                             </h3>
                             <span className="text-sm text-gray-500">— {work.longueur}m × {work.hauteur}m = {work.surface} m²</span>
+                            {hasOuvertures && (
+                              <span className="text-xs text-orange-600">(- {work.surface_ouvertures} m² ouvertures)</span>
+                            )}
                           </div>
+
+                          {hasOuvertures && (
+                            <div className="mb-3 p-2 bg-orange-50 rounded text-xs text-orange-800">
+                              <span className="font-medium">Ouvertures déduites : </span>
+                              {work.ouvertures.map((ouv, i) => (
+                                <span key={i}>
+                                  {getOuvertureLabel(ouv.type)} ({ouv.largeur}×{ouv.hauteur}m)
+                                  {i < work.ouvertures.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
                           {materials.length > 0 ? (
                             <div className="overflow-x-auto">
@@ -981,7 +1113,7 @@ const QuotationEditPage = () => {
                               </table>
                             </div>
                           ) : (
-                            <p className="text-gray-500 italic">Aucun matériau calculé - vérifiez les dimensions</p>
+                            <p className="text-gray-500 italic">Aucun matériau calculé</p>
                           )}
                         </div>
                       );
@@ -1032,7 +1164,7 @@ const QuotationEditPage = () => {
               ) : (
                 <button type="button" onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50">
                   <CheckIcon className="w-5 h-5" />
-                  {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               )}
             </div>
