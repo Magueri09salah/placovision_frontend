@@ -475,9 +475,9 @@ const QuotationDetailPage = () => {
           </div>
 
           {/* Sidebar - Totals */}
-          <div className="space-y-6">
+          <div className="space-y-6 flex flex-col">
             {/* Totals Card */}
-            <div className="bg-white rounded-xl shadow p-6 print:shadow-none print:border print:border-gray-200 sticky top-6">
+            <div className="bg-white rounded-xl shadow p-6 print:shadow-none print:border print:border-gray-200 top-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Récapitulatif</h2>
               
               {/* ✅ Résumé des travaux */}

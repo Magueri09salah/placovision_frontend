@@ -23,6 +23,10 @@ import QuotationFormPage from './components/quotations/QuotationFormPage';
 import QuotationDetailPage from './components/quotations/QuotationDetailPage';
 import QuotationEditPage from './components/quotations/QuotationEditPage';
 
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { UpdateAvailable } from './components/UpdateAvailable';
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -80,6 +84,9 @@ const ProfessionalRoute = ({ children }) => {
 
 const AppRoutes = () => {
   return (
+    <>
+    <OfflineIndicator />
+     <UpdateAvailable />
     <Routes>
       {/* Public routes */}
       <Route 
@@ -212,6 +219,9 @@ const AppRoutes = () => {
       {/* 404 */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    <PWAInstallBanner />
+    </>
+     
   );
 };
 

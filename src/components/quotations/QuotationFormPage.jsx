@@ -885,50 +885,72 @@ const QuotationFormPage = () => {
                                   </div>
 
                                   {work.ouvertures && work.ouvertures.length > 0 && (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                       {work.ouvertures.map((ouverture, ouvertureIndex) => (
-                                        <div key={ouvertureIndex} className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200">
-                                          <select
-                                            value={ouverture.type}
-                                            onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', e.target.value)}
-                                            className="px-2 py-1 border border-gray-300 rounded text-sm"
-                                          >
-                                            {OUVERTURE_TYPES.map((type) => (
-                                              <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
-                                            ))}
-                                          </select>
-                                          <div className="flex items-center gap-1">
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              step="0.01"
-                                              placeholder="Larg."
-                                              value={ouverture.largeur || ''}
-                                              onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
-                                              className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                                            />
-                                            <span className="text-gray-400 text-xs">×</span>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              step="0.01"
-                                              placeholder="Haut."
-                                              value={ouverture.hauteur || ''}
-                                              onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
-                                              className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                                            />
-                                            <span className="text-gray-500 text-xs">m</span>
+                                        <div key={ouvertureIndex} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                          {/* Row 1: Type selector + Delete button */}
+                                          <div className="flex items-center justify-between gap-2 mb-3">
+                                            <div className="flex gap-2">
+                                              {OUVERTURE_TYPES.map((type) => (
+                                                <button
+                                                  key={type.value}
+                                                  type="button"
+                                                  onClick={() => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', type.value)}
+                                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                                    ouverture.type === type.value
+                                                      ? 'bg-red-100 text-red-700 border-2 border-red-500'
+                                                      : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                                                  }`}
+                                                >
+                                                  <span>{type.icon}</span>
+                                                  <span className="hidden sm:inline">{type.label}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)}
+                                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                              <TrashIcon className="w-4 h-4" />
+                                            </button>
                                           </div>
-                                          <span className="text-xs text-gray-500 ml-auto">
-                                            = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)}
-                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                          >
-                                            <TrashIcon className="w-4 h-4" />
-                                          </button>
+                                          
+                                          {/* Row 2: Dimensions + Surface */}
+                                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                            <div className="flex items-center gap-4">
+                                              <span className="text-xs text-gray-500 w-6">Larg:</span>
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={ouverture.largeur || ''}
+                                                onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
+                                                className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                              />
+                                              <span className="text-gray-500 text-xs">m</span>
+                                            </div>
+                                            <span className="text-gray-400 font-bold">×</span>
+                                            <div className="flex items-center gap-4">
+                                              <span className="text-xs text-gray-500 w-6">Haut:</span>
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={ouverture.hauteur || ''}
+                                                onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
+                                                className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                              />
+                                              <span className="text-gray-500 text-xs">m</span>
+                                            </div>
+                                            <div className="px-3 py-1.5 bg-orange-100 rounded-lg ml-auto">
+                                              <span className="text-sm font-semibold text-orange-700">
+                                                = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
+                                              </span>
+                                            </div>
+                                          </div>
                                         </div>
                                       ))}
                                       
