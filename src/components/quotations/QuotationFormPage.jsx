@@ -1,5 +1,5 @@
 // src/pages/QuotationFormPage.jsx
-// VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes)
+// VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes) + isolant optionnel
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -86,6 +86,15 @@ const OUVERTURE_TYPES = [
   { value: 'porte', label: 'Porte', icon: '🚪' },
 ];
 
+// ✅ Types d'isolant (optionnel)
+const ISOLANT_OPTIONS = [
+  { value: 'none', label: 'Sans isolant', prix: 0 },
+  { value: 'laine_minerale_easy', label: 'Laine minérale Easy Volcalis', prix: 26.40 },
+  { value: 'laine_minerale_confort', label: 'Laine minérale Confort Volcalis', prix: 36.00 },
+  { value: 'laine_verre', label: 'Laine de verre', prix: 21.60 },
+  { value: 'laine_roche', label: 'Laine de roche ROCKMUR', prix: 47.40 },
+];
+
 const STEPS = [
   { id: 1, name: 'Client' },
   { id: 2, name: 'Pièces' },
@@ -103,8 +112,6 @@ const PRIX_UNITAIRES = {
   rail_48: 21.12,
   rail_70: 28.20,
   fourrure: 21.12,
-  isolant_verre: 18.00,
-  // isolant_roche: 47.00,
   vis_25mm_boite: 62.40,
   vis_9mm_boite: 69.60,
   suspente: 0.00,
@@ -155,8 +162,8 @@ const calculateOuverturesSurface = (ouvertures = []) => {
   }, 0);
 };
 
-// Fonction de calcul des matériaux avec support des ouvertures
-const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaisseur = '72', ouvertures = []) => {
+// ✅ Fonction de calcul des matériaux avec support isolant optionnel
+const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaisseur = '72', ouvertures = [], isolant = 'none') => {
   const L = parseFloat(longueur) || 0;
   const H = parseFloat(hauteur) || 0;
   const surfaceBrute = L * H;
@@ -182,6 +189,16 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
     });
   };
 
+  // ✅ Fonction pour ajouter l'isolant si sélectionné
+  const addIsolant = (surfaceIsolant) => {
+    if (isolant && isolant !== 'none') {
+      const isolantOption = ISOLANT_OPTIONS.find(o => o.value === isolant);
+      if (isolantOption && isolantOption.prix > 0) {
+        add(isolantOption.label, arrondiSup(surfaceIsolant), 'm²', isolantOption.prix);
+      }
+    }
+  };
+
   switch (workType) {
     case 'habillage_mur': {
       // Plaques (vendu au m², surface nette)
@@ -196,9 +213,9 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       // Rails : haut + bas
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
       
-      // Isolant (surface nette)
-      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
-      // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
+      // ✅ Isolant optionnel (surface nette)
+      addIsolant(surface);
+      
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       const bande = bandeToRouleaux(arrondiSup(surface * 3));
@@ -227,15 +244,15 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       if (isDouble) {
         add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_verre);
-        // add('Isolant (laine de roche)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_roche);
+        // ✅ Isolant optionnel (surface × 2 pour double)
+        addIsolant(surface * 2);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
         add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
-        // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
+        // ✅ Isolant optionnel (surface simple)
+        addIsolant(surface);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       }
@@ -301,7 +318,8 @@ const QuotationFormPage = () => {
           work.hauteur, 
           room.room_type, 
           work.epaisseur || '72',
-          work.ouvertures || []
+          work.ouvertures || [],
+          work.isolant || 'none'
         );
         if (!existingMaterials || !existingMaterials.userModified) {
           newMaterials[key] = { items: materials, userModified: false };
@@ -370,7 +388,8 @@ const QuotationFormPage = () => {
           hauteur: '', 
           surface: 0, 
           epaisseur: '72',
-          ouvertures: [] 
+          ouvertures: [],
+          isolant: 'none'
         }],
       };
     }));
@@ -405,6 +424,19 @@ const QuotationFormPage = () => {
       return {
         ...room,
         works: room.works.map((work, j) => j !== workIndex ? work : { ...work, epaisseur }),
+      };
+    }));
+    const key = `${roomIndex}-${workIndex}`;
+    setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
+  };
+
+  // ✅ Handler pour l'isolant
+  const updateWorkIsolant = (roomIndex, workIndex, isolant) => {
+    setRooms(prev => prev.map((room, i) => {
+      if (i !== roomIndex) return room;
+      return {
+        ...room,
+        works: room.works.map((work, j) => j !== workIndex ? work : { ...work, isolant }),
       };
     }));
     const key = `${roomIndex}-${workIndex}`;
@@ -594,6 +626,7 @@ const QuotationFormPage = () => {
             hauteur: parseFloat(work.hauteur) || 0,
             surface: parseFloat(work.surface) || 0,
             ouvertures: work.ouvertures || [],
+            isolant: work.isolant || 'none',
             items: (calculatedMaterials[`${roomIndex}-${workIndex}`]?.items || []).map(item => ({
               designation: item.designation,
               quantity_calculated: item.quantity_calculated,
@@ -622,6 +655,7 @@ const QuotationFormPage = () => {
 
   const getOuvertureLabel = (type) => OUVERTURE_TYPES.find(o => o.value === type)?.label || type;
   const getEpaisseurLabel = (epaisseur) => EPAISSEUR_OPTIONS.find(e => e.value === epaisseur)?.label || 'Standard';
+  const getIsolantLabel = (isolant) => ISOLANT_OPTIONS.find(o => o.value === isolant)?.label || 'Sans isolant';
 
   // ============ RENDER ============
   return (
@@ -762,7 +796,7 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 3: Work Types with Ouvertures */}
+          {/* Step 3: Work Types with Ouvertures and Isolant */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -770,7 +804,7 @@ const QuotationFormPage = () => {
                   <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800">
                     <p className="font-medium mb-1">Calcul conforme au DTU 25.41</p>
-                    <p>Saisissez les dimensions réelles. Pour les murs et cloisons, vous pouvez ajouter des ouvertures (fenêtres/portes) qui seront déduites de la surface.</p>
+                    <p>Saisissez les dimensions réelles. Pour les murs et cloisons, vous pouvez ajouter des ouvertures et choisir un type d'isolant.</p>
                   </div>
                 </div>
               </div>
@@ -816,6 +850,7 @@ const QuotationFormPage = () => {
                           const isPlafond = work.work_type === 'plafond_ba13';
                           const isCloison = work.work_type === 'cloison';
                           const supportsOuvertures = work.work_type === 'habillage_mur' || work.work_type === 'cloison';
+                          const supportsIsolant = work.work_type === 'habillage_mur' || work.work_type === 'cloison';
 
                           return (
                             <div key={workIndex} className="p-4 bg-gray-50 rounded-lg">
@@ -873,6 +908,32 @@ const QuotationFormPage = () => {
                                   <div className="px-3 py-2 bg-green-100 rounded-lg text-sm font-medium text-green-700">{work.surface || 0} m²</div>
                                 </div>
                               </div>
+
+                              {/* ✅ Isolant selector */}
+                              {supportsIsolant && (
+                                <div className="mb-4">
+                                  <label className="block text-xs font-medium text-gray-600 mb-2">🧶 Isolant (optionnel)</label>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                                    {ISOLANT_OPTIONS.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => updateWorkIsolant(roomIndex, workIndex, option.value)}
+                                        className={`p-2 text-xs rounded-lg border-2 transition-all text-left ${
+                                          work.isolant === option.value 
+                                            ? 'border-green-500 bg-green-50 text-green-700' 
+                                            : 'border-gray-200 hover:border-gray-300'
+                                        }`}
+                                      >
+                                        <div className="font-medium truncate">{option.label}</div>
+                                        {/* {option.prix > 0 && (
+                                          <div className="text-gray-500">{option.prix.toFixed(2)} DH/m²</div>
+                                        )} */}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Ouvertures section */}
                               {supportsOuvertures && (
@@ -1033,6 +1094,7 @@ const QuotationFormPage = () => {
                       const materials = calculatedMaterials[materialKey]?.items || [];
                       const isCloison = work.work_type === 'cloison';
                       const hasOuvertures = work.ouvertures && work.ouvertures.length > 0;
+                      const hasIsolant = work.isolant && work.isolant !== 'none';
 
                       return (
                         <div key={workIndex} className="mb-6 last:mb-0">
@@ -1060,6 +1122,14 @@ const QuotationFormPage = () => {
                                   {i < work.ouvertures.length - 1 ? ', ' : ''}
                                 </span>
                               ))}
+                            </div>
+                          )}
+
+                          {/* ✅ Isolant sélectionné */}
+                          {hasIsolant && (
+                            <div className="mb-3 p-2 bg-green-50 rounded text-xs text-green-800">
+                              <span className="font-medium">🧶 Isolant : </span>
+                              {getIsolantLabel(work.isolant)}
                             </div>
                           )}
 
