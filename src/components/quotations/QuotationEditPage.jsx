@@ -95,13 +95,15 @@ const STEPS = [
 const PRIX_UNITAIRES = {
   plaque_ba13_standard: 24.12,
   plaque_hydro: 34.20,
-  plaque_feu: 0,
+  plaque_feu: 42.00,
+  plaque_outguard: 97.2,
   montant_48: 26.16,
   montant_70: 33.00,
   rail_48: 21.12,
   rail_70: 28.20,
   fourrure: 21.12,
-  isolant: 0,
+  isolant_verre: 18.00,
+  // isolant_roche: 47.00,
   vis_25mm_boite: 62.40,
   vis_9mm_boite: 69.60,
   suspente: 0.00,
@@ -119,7 +121,7 @@ const PLAQUE_BY_ROOM = {
   wc: { designation: 'Plaque Hydro', prix: PRIX_UNITAIRES.plaque_hydro },
   bureau: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
   garage: { designation: 'Plaque Feu', prix: PRIX_UNITAIRES.plaque_feu },
-  exterieur: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  exterieur: { designation: 'Plaque Extérieur', prix: PRIX_UNITAIRES.plaque_outguard },
   autre: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
 };
 
@@ -185,7 +187,8 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
-      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
+      // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       const bande = bandeToRouleaux(arrondiSup(surface * 3));
@@ -209,13 +212,15 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       if (isDouble) {
         add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant);
+        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_verre);
+        // add('Isolant (laine de roche)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_roche);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
         add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
+        // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       }
@@ -271,7 +276,7 @@ const QuotationEditPage = () => {
     const fetchQuotation = async () => {
       try {
         setLoading(true);
-        const response = await quotationAPI.getById(id);
+        const response = await quotationAPI.getOne(id);
         const quotation = response.data.data;
 
         setQuotationReference(quotation.reference);
@@ -1165,28 +1170,50 @@ const QuotationEditPage = () => {
           )}
 
           {/* Navigation */}
-          <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-            <div>
-              {currentStep > 1 && (
-                <button type="button" onClick={handlePrevious} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-3 sm:gap-0 mt-8 pt-6 border-t border-gray-200">
+            {/* Bouton Précédent */}
+            <div className="w-full sm:w-auto">
+              {currentStep > 1 ? (
+                <button 
+                  type="button" 
+                  onClick={handlePrevious} 
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <ArrowLeftIcon className="w-4 h-4" />
-                  Précédent
+                  <span>Précédent</span>
                 </button>
+              ) : (
+                <div className="hidden sm:block" />
               )}
             </div>
-            <div className="flex gap-3">
-              <Link to={`/quotations/${id}`} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            
+            {/* Boutons Annuler + Suivant/Enregistrer */}
+            <div className="flex w-full sm:w-auto gap-2 sm:gap-3">
+              <Link 
+                to={`/quotations/${id}`} 
+                className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center transition-colors"
+              >
                 Annuler
               </Link>
+              
               {currentStep < 4 ? (
-                <button type="button" onClick={handleNext} className="flex items-center gap-2 px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800">
-                  Suivant
+                <button 
+                  type="button" 
+                  onClick={handleNext} 
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors"
+                >
+                  <span>Suivant</span>
                   <ArrowRightIcon className="w-4 h-4" />
                 </button>
               ) : (
-                <button type="button" onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50">
+                <button 
+                  type="button" 
+                  onClick={handleSubmit} 
+                  disabled={saving} 
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors"
+                >
                   <CheckIcon className="w-5 h-5" />
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  <span>{saving ? 'Enregistrement...' : 'Enregistrer'}</span>
                 </button>
               )}
             </div>

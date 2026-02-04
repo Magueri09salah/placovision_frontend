@@ -86,7 +86,7 @@ const AppRoutes = () => {
   return (
     <>
     <OfflineIndicator />
-     <UpdateAvailable />
+     {/* <UpdateAvailable /> */}
     <Routes>
       {/* Public routes */}
       <Route 

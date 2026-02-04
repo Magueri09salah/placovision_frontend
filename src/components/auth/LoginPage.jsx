@@ -103,12 +103,12 @@ const LoginPage = () => {
               Mot de passe
               <span className="text-primary">*</span>
             </label>
-            <Link 
+            {/* <Link 
               to="/forgot-password" 
               className="text-sm text-primary hover:text-primary-dark font-medium transition-colors"
             >
               Mot de passe oublié ?
-            </Link>
+            </Link> */}
           </div>
           <Input
             type="password"

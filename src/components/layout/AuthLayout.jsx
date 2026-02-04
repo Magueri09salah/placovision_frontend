@@ -18,6 +18,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
+
       </div>
 
       {/* Content */}
@@ -26,11 +27,10 @@ const AuthLayout = ({ children, title, subtitle }) => {
         <div className="mb-8 animate-fade-in">
           <Logo_auth size="large" />
         </div>
-
         {/* Title */}
         {title && (
           <div className="text-center mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-primary mb-2">
+            <h1 className="text-xl sm:text-xl font-semibold text-primary mb-2">
               {title}
             </h1>
             {subtitle && (

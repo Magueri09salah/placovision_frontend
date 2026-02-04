@@ -5,20 +5,20 @@ const Logo = ({ size = 'default', showText = true }) => {
   const sizes = {
     small: { logo: 'h-12' },
     default: { logo: 'h-12' },
-    large: { logo: 'h-24' },
+    large: { logo: 'h-28' },
   };
 
   const { logo } = sizes[size];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col items-center gap-4">
       <img 
         src={placovision} 
         alt="L'AS DU PLACO" 
         className={`${logo} w-auto`}
 
       />
-      <p className='font-display font-bold text-primary text-4xl tracking-tight leading-none'>
+      <p className='font-display font-bold text-primary text-3xl tracking-tight leading-none'>
         PLACOVISION
       </p>
     </div>

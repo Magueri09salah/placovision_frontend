@@ -96,13 +96,15 @@ const STEPS = [
 const PRIX_UNITAIRES = {
   plaque_ba13_standard: 24.12,
   plaque_hydro: 34.20,
-  plaque_feu: 0,
+  plaque_feu: 42.00,
+  plaque_outguard: 97.2,
   montant_48: 26.16,
   montant_70: 33.00,
   rail_48: 21.12,
   rail_70: 28.20,
   fourrure: 21.12,
-  isolant: 0,
+  isolant_verre: 18.00,
+  // isolant_roche: 47.00,
   vis_25mm_boite: 62.40,
   vis_9mm_boite: 69.60,
   suspente: 0.00,
@@ -120,7 +122,7 @@ const PLAQUE_BY_ROOM = {
   wc: { designation: 'Plaque Hydro', prix: PRIX_UNITAIRES.plaque_hydro },
   bureau: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
   garage: { designation: 'Plaque Feu', prix: PRIX_UNITAIRES.plaque_feu },
-  exterieur: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
+  exterieur: { designation: 'Plaque OutGuard', prix: PRIX_UNITAIRES.plaque_outguard },
   autre: { designation: 'Plaque BA13 standard', prix: PRIX_UNITAIRES.plaque_ba13_standard },
 };
 
@@ -195,7 +197,8 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
       
       // Isolant (surface nette)
-      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+      add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
+      // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       const bande = bandeToRouleaux(arrondiSup(surface * 3));
@@ -224,13 +227,15 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       if (isDouble) {
         add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant);
+        add('Isolant (laine de verre)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_verre);
+        // add('Isolant (laine de roche)', arrondiSup(surface * 2), 'm²', PRIX_UNITAIRES.isolant_roche);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
         add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant);
+        add('Isolant (laine de verre)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_verre);
+        // add('Isolant (laine de roche)', arrondiSup(surface), 'm²', PRIX_UNITAIRES.isolant_roche);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       }
@@ -890,19 +895,19 @@ const QuotationFormPage = () => {
                                         <div key={ouvertureIndex} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                           {/* Row 1: Type selector + Delete button */}
                                           <div className="flex items-center justify-between gap-2 mb-3">
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-1 sm:gap-2">
                                               {OUVERTURE_TYPES.map((type) => (
                                                 <button
                                                   key={type.value}
                                                   type="button"
                                                   onClick={() => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', type.value)}
-                                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                                  className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                                                     ouverture.type === type.value
                                                       ? 'bg-red-100 text-red-700 border-2 border-red-500'
                                                       : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
                                                   }`}
                                                 >
-                                                  <span>{type.icon}</span>
+                                                  <span className="text-base sm:text-lg">{type.icon}</span>
                                                   <span className="hidden sm:inline">{type.label}</span>
                                                 </button>
                                               ))}
@@ -910,43 +915,50 @@ const QuotationFormPage = () => {
                                             <button
                                               type="button"
                                               onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)}
-                                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                              className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                                             >
                                               <TrashIcon className="w-4 h-4" />
                                             </button>
                                           </div>
                                           
-                                          {/* Row 2: Dimensions + Surface */}
-                                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                            <div className="flex items-center gap-4">
-                                              <span className="text-xs text-gray-500 w-6">Larg:</span>
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                value={ouverture.largeur || ''}
-                                                onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
-                                                className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                              />
-                                              <span className="text-gray-500 text-xs">m</span>
+                                          {/* Row 2: Dimensions + Surface - Stacks on mobile */}
+                                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                                            {/* Dimensions group */}
+                                            <div className="flex items-center justify-center gap-2 sm:gap-3">
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-xs text-gray-500">L:</span>
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  step="0.01"
+                                                  placeholder="0.00"
+                                                  value={ouverture.largeur || ''}
+                                                  onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
+                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                />
+                                                <span className="text-gray-400 text-xs">m</span>
+                                              </div>
+                                              
+                                              <span className="text-gray-400 font-bold">×</span>
+                                              
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-xs text-gray-500">H:</span>
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  step="0.01"
+                                                  placeholder="0.00"
+                                                  value={ouverture.hauteur || ''}
+                                                  onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
+                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                />
+                                                <span className="text-gray-400 text-xs">m</span>
+                                              </div>
                                             </div>
-                                            <span className="text-gray-400 font-bold">×</span>
-                                            <div className="flex items-center gap-4">
-                                              <span className="text-xs text-gray-500 w-6">Haut:</span>
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                value={ouverture.hauteur || ''}
-                                                onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
-                                                className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                              />
-                                              <span className="text-gray-500 text-xs">m</span>
-                                            </div>
-                                            <div className="px-3 py-1.5 bg-orange-100 rounded-lg ml-auto">
-                                              <span className="text-sm font-semibold text-orange-700">
+                                            
+                                            {/* Surface result - Full width on mobile, right aligned on desktop */}
+                                            <div className="px-3 py-1.5 bg-orange-100 rounded-lg sm:ml-auto">
+                                              <span className="text-sm font-semibold text-orange-700 block text-center sm:text-right">
                                                 = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
                                               </span>
                                             </div>
@@ -954,12 +966,12 @@ const QuotationFormPage = () => {
                                         </div>
                                       ))}
                                       
-                                      {/* Summary */}
+                                      {/* Summary - responsive */}
                                       {work.surface_ouvertures > 0 && (
-                                        <div className="flex justify-end gap-4 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-100">
-                                          <span>Surface brute: <strong>{work.surface_brute || 0} m²</strong></span>
-                                          <span>Ouvertures: <strong className="text-orange-600">-{work.surface_ouvertures || 0} m²</strong></span>
-                                          <span>Surface nette: <strong className="text-green-600">{work.surface || 0} m²</strong></span>
+                                        <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-100">
+                                          <span className="text-center sm:text-right">Surface brute: <strong>{work.surface_brute || 0} m²</strong></span>
+                                          <span className="text-center sm:text-right">Ouvertures: <strong className="text-orange-600">-{work.surface_ouvertures || 0} m²</strong></span>
+                                          <span className="text-center sm:text-right">Surface nette: <strong className="text-green-600">{work.surface || 0} m²</strong></span>
                                         </div>
                                       )}
                                     </div>
@@ -1133,28 +1145,50 @@ const QuotationFormPage = () => {
           )}
 
           {/* Navigation */}
-          <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-            <div>
-              {currentStep > 1 && (
-                <button type="button" onClick={handlePrevious} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-3 sm:gap-0 mt-8 pt-6 border-t border-gray-200">
+            {/* Bouton Précédent - Hidden on step 1 */}
+            <div className="w-full sm:w-auto">
+              {currentStep > 1 ? (
+                <button 
+                  type="button" 
+                  onClick={handlePrevious} 
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <ArrowLeftIcon className="w-4 h-4" />
-                  Précédent
+                  <span>Précédent</span>
                 </button>
+              ) : (
+                <div className="hidden sm:block" /> 
               )}
             </div>
-            <div className="flex gap-3">
-              <Link to="/quotations" className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            
+            {/* Boutons Annuler + Suivant/Créer */}
+            <div className="flex w-full sm:w-auto gap-2 sm:gap-3">
+              <Link 
+                to="/quotations" 
+                className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center transition-colors"
+              >
                 Annuler
               </Link>
+              
               {currentStep < 4 ? (
-                <button type="button" onClick={handleNext} className="flex items-center gap-2 px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800">
-                  Suivant
+                <button 
+                  type="button" 
+                  onClick={handleNext} 
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors"
+                >
+                  <span>Suivant</span>
                   <ArrowRightIcon className="w-4 h-4" />
                 </button>
               ) : (
-                <button type="button" onClick={handleSubmit} disabled={saving} className="flex items-center gap-2 px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50">
+                <button 
+                  type="button" 
+                  onClick={handleSubmit} 
+                  disabled={saving} 
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors"
+                >
                   <CheckIcon className="w-5 h-5" />
-                  {saving ? 'Création...' : 'Créer le devis'}
+                  <span>{saving ? 'Création...' : 'Créer le devis'}</span>
                 </button>
               )}
             </div>
