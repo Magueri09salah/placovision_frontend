@@ -207,7 +207,7 @@ const QuotationListPage = () => {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {/* {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow p-4">
               <p className="text-sm text-gray-500">Total devis</p>
@@ -228,7 +228,7 @@ const QuotationListPage = () => {
               </p>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow p-4">
