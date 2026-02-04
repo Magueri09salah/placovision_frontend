@@ -227,7 +227,7 @@ const ProfilePage = () => {
             />
 
             {/* Account info */}
-            <div className="pt-4 border-t border-neutral-100">
+            {/* <div className="pt-4 border-t border-neutral-100">
               <h3 className="text-sm font-semibold text-neutral-700 mb-3">
                 Informations du compte
               </h3>
@@ -245,7 +245,7 @@ const ProfilePage = () => {
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             <div className="flex justify-end pt-4">
               <Button type="submit" loading={loading}>
