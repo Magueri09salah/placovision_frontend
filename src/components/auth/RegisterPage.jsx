@@ -23,7 +23,7 @@ const PasswordStrengthIndicator = ({ password }) => {
     { label: 'Une lettre majuscule', valid: /[A-Z]/.test(password) },
     { label: 'Une lettre minuscule', valid: /[a-z]/.test(password) },
     { label: 'Un chiffre', valid: /[0-9]/.test(password) },
-    { label: 'Un caractère spécial (!@#$%...)', valid: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+    { label: 'Un caractère spécial (!@#$%...)', valid: /[!@#$%^&*(),.?":{}|<>+-/=]/.test(password) },
   ];
 
   if (!password) return null;

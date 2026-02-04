@@ -78,7 +78,7 @@ const ROOM_ICONS = {
 const WORK_TYPES = {
   habillage_mur: { 
     icon: '🧱', 
-    label: 'Habillage BA13 / Contre-cloison',
+    label: 'Habillage BA13',
     description: 'Ouvrage vertical – 1 face'
   },
   cloison_simple: { 

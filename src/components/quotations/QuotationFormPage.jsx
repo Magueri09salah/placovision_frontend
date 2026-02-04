@@ -69,7 +69,7 @@ const ROOM_TYPES = [
 ];
 
 const WORK_TYPES = [
-  { value: 'habillage_mur', label: 'Habillage BA13 / Contre-cloison', icon: '🧱', description: 'Ouvrage vertical – 1 face' },
+  { value: 'habillage_mur', label: 'Habillage BA13', icon: '🧱', description: 'Ouvrage vertical – 1 face' },
   { value: 'cloison', label: 'Cloison', icon: '🚪', description: 'Selon épaisseur : M48/M70/Double' },
   { value: 'plafond_ba13', label: 'Plafond BA13', icon: '⬆️', description: 'Sur ossature métallique' },
 ];
@@ -877,7 +877,7 @@ const QuotationFormPage = () => {
                                         key={option.value}
                                         type="button"
                                         onClick={() => updateWorkEpaisseur(roomIndex, workIndex, option.value)}
-                                        className={`p-2 text-xs rounded-lg border-2 transition-all ${work.epaisseur === option.value ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:border-gray-300'}`}
+                                        className={`p-2 text-xs rounded-lg border-2 transition-all ${work.epaisseur === option.value ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-gray-300'}`}
                                       >
                                         <div className="font-medium">{option.label}</div>
                                         <div className="text-gray-500">{option.sublabel}</div>
@@ -912,7 +912,7 @@ const QuotationFormPage = () => {
                               {/* ✅ Isolant selector */}
                               {supportsIsolant && (
                                 <div className="mb-4">
-                                  <label className="block text-xs font-medium text-gray-600 mb-2">🧶 Isolant (optionnel)</label>
+                                  <label className="block text-s font-medium text-gray-600 mb-2">🧶 Isolant (optionnel)</label>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                                     {ISOLANT_OPTIONS.map((option) => (
                                       <button
@@ -925,7 +925,7 @@ const QuotationFormPage = () => {
                                             : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                       >
-                                        <div className="font-medium truncate">{option.label}</div>
+                                        <div className="font-medium">{option.label}</div>
                                         {/* {option.prix > 0 && (
                                           <div className="text-gray-500">{option.prix.toFixed(2)} DH/m²</div>
                                         )} */}
@@ -939,11 +939,11 @@ const QuotationFormPage = () => {
                               {supportsOuvertures && (
                                 <div className="border-t border-gray-200 pt-4 mt-4">
                                   <div className="flex items-center justify-between mb-3">
-                                    <label className="text-xs font-medium text-gray-600">Ouvertures (fenêtres / portes)</label>
+                                    <label className="text-s font-medium text-gray-600">Ouvertures (fenêtres / portes)</label>
                                     <button
                                       type="button"
                                       onClick={() => addOuverture(roomIndex, workIndex)}
-                                      className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                      className="flex items-center gap-1 text-s text-green-600 hover:text-green-700 font-medium"
                                     >
                                       <PlusIcon className="w-4 h-4" />
                                       Ajouter une ouverture
@@ -964,7 +964,7 @@ const QuotationFormPage = () => {
                                                   onClick={() => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', type.value)}
                                                   className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                                                     ouverture.type === type.value
-                                                      ? 'bg-red-100 text-red-700 border-2 border-red-500'
+                                                      ? 'bg-green-100 text-green-700 border-2 border-green-500'
                                                       : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
                                                   }`}
                                                 >
@@ -995,7 +995,7 @@ const QuotationFormPage = () => {
                                                   placeholder="0.00"
                                                   value={ouverture.largeur || ''}
                                                   onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
-                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                                 />
                                                 <span className="text-gray-400 text-xs">m</span>
                                               </div>
@@ -1011,15 +1011,15 @@ const QuotationFormPage = () => {
                                                   placeholder="0.00"
                                                   value={ouverture.hauteur || ''}
                                                   onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
-                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                                 />
                                                 <span className="text-gray-400 text-xs">m</span>
                                               </div>
                                             </div>
                                             
                                             {/* Surface result - Full width on mobile, right aligned on desktop */}
-                                            <div className="px-3 py-1.5 bg-orange-100 rounded-lg sm:ml-auto">
-                                              <span className="text-sm font-semibold text-orange-700 block text-center sm:text-right">
+                                            <div className="px-3 py-1.5 bg-green-100 rounded-lg sm:ml-auto">
+                                              <span className="text-sm font-semibold text-green-700 block text-center sm:text-right">
                                                 = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
                                               </span>
                                             </div>
