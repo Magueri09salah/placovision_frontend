@@ -77,7 +77,7 @@ export const usePWA = () => {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setUpdateAvailable(true);
+                  // setUpdateAvailable(true);
                 }
               });
             }
