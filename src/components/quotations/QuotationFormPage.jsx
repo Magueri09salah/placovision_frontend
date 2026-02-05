@@ -80,13 +80,11 @@ const EPAISSEUR_OPTIONS = [
   { value: '140', label: '≥ 140 mm', sublabel: 'Double M48/R48', montant: 'montant_48', rail: 'rail_48', isDouble: true },
 ];
 
-// Types d'ouvertures
 const OUVERTURE_TYPES = [
   { value: 'fenetre', label: 'Fenêtre', icon: '🪟' },
   { value: 'porte', label: 'Porte', icon: '🚪' },
 ];
 
-// ✅ Types d'isolant (optionnel)
 const ISOLANT_OPTIONS = [
   { value: 'none', label: 'Sans isolant', prix: 0 },
   { value: 'laine_minerale_easy', label: 'Laine minérale Easy Volcalis', prix: 26.40 },
@@ -114,7 +112,10 @@ const PRIX_UNITAIRES = {
   fourrure: 21.12,
   vis_25mm_boite: 62.40,
   vis_9mm_boite: 69.60,
-  suspente: 0.00,
+  // Suspente décomposée en 3 éléments
+  tige_filetee: 3.96,
+  pivot: 0.96,
+  cheville_laiton: 0.79,
   corniere: 13.44,
   bande_joint_150: 48.00,
   bande_joint_300: 85.00,
@@ -153,7 +154,6 @@ const bandeToRouleaux = (ml) => {
   return { designation: 'Bande à joint 300m', quantity: Math.ceil(ml / 300), prix: PRIX_UNITAIRES.bande_joint_300 };
 };
 
-// Calcul de la surface des ouvertures
 const calculateOuverturesSurface = (ouvertures = []) => {
   return ouvertures.reduce((total, ouv) => {
     const largeur = parseFloat(ouv.largeur) || 0;
@@ -162,7 +162,6 @@ const calculateOuverturesSurface = (ouvertures = []) => {
   }, 0);
 };
 
-// ✅ Fonction de calcul des matériaux avec support isolant optionnel
 const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaisseur = '72', ouvertures = [], isolant = 'none') => {
   const L = parseFloat(longueur) || 0;
   const H = parseFloat(hauteur) || 0;
@@ -189,7 +188,6 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
     });
   };
 
-  // ✅ Fonction pour ajouter l'isolant si sélectionné
   const addIsolant = (surfaceIsolant) => {
     if (isolant && isolant !== 'none') {
       const isolantOption = ISOLANT_OPTIONS.find(o => o.value === isolant);
@@ -201,21 +199,13 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
   switch (workType) {
     case 'habillage_mur': {
-      // Plaques (vendu au m², surface nette)
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
-      
-      // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
       const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
       const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
       const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
-      
-      // Rails : haut + bas
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
-      
-      // ✅ Isolant optionnel (surface nette)
       addIsolant(surface);
-      
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       const bande = bandeToRouleaux(arrondiSup(surface * 3));
@@ -230,28 +220,21 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
       const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
 
-      // Plaques (2 faces, vendu au m², surface nette)
       add(plaque.designation, arrondiSup(surface * 2), 'm²', plaque.prix);
-
-      // Montants : formule = 2 × (Lignes - 1) × Montants/ligne
       const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
       const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
       const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
-      
-      // Rails : haut + bas
       const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
 
       if (isDouble) {
         add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-        // ✅ Isolant optionnel (surface × 2 pour double)
         addIsolant(surface * 2);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
         add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-        // ✅ Isolant optionnel (surface simple)
         addIsolant(surface);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
@@ -265,10 +248,15 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
     case 'plafond_ba13': {
       const l = H;
-      // Plaques (vendu au m²)
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
       add('Fourrure', arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.fourrure);
-      add('Suspente', arrondiSup(surface * 2.5), 'unité', PRIX_UNITAIRES.suspente);
+      
+      // Suspente décomposée : même quantité pour les 3 éléments (surface * 2.5)
+      const qteSuspente = arrondiSup(surface * 2.5);
+      add('Tige filetée', qteSuspente, 'unité', PRIX_UNITAIRES.tige_filetee);
+      add('Pivot', qteSuspente, 'unité', PRIX_UNITAIRES.pivot);
+      add('Cheville en laiton', qteSuspente, 'unité', PRIX_UNITAIRES.cheville_laiton);
+      
       add('Cornière périphérique', arrondiSup(((L + l) * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.corniere);
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 22)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       const bande = bandeToRouleaux(arrondiSup(surface * 3));
@@ -289,7 +277,6 @@ const QuotationFormPage = () => {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
 
-  // Step 1: Client Info
   const [clientInfo, setClientInfo] = useState({
     client_name: '',
     client_email: '',
@@ -299,13 +286,9 @@ const QuotationFormPage = () => {
     site_postal_code: '',
   });
 
-  // Step 2 & 3: Rooms with works
   const [rooms, setRooms] = useState([]);
-
-  // Calculated materials
   const [calculatedMaterials, setCalculatedMaterials] = useState({});
 
-  // Recalculate materials when rooms change
   useEffect(() => {
     const newMaterials = {};
     rooms.forEach((room, roomIndex) => {
@@ -338,7 +321,6 @@ const QuotationFormPage = () => {
     setCalculatedMaterials(newMaterials);
   }, [rooms]);
 
-  // Calculate totals
   const totals = useMemo(() => {
     let totalHt = 0;
     Object.values(calculatedMaterials).forEach(({ items }) => {
@@ -352,7 +334,6 @@ const QuotationFormPage = () => {
     };
   }, [calculatedMaterials]);
 
-  // ============ HANDLERS ============
   const handleClientChange = (e) => {
     const { name, value } = e.target;
     setClientInfo(prev => ({ ...prev, [name]: value }));
@@ -430,7 +411,6 @@ const QuotationFormPage = () => {
     setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
   };
 
-  // ✅ Handler pour l'isolant
   const updateWorkIsolant = (roomIndex, workIndex, isolant) => {
     setRooms(prev => prev.map((room, i) => {
       if (i !== roomIndex) return room;
@@ -443,7 +423,6 @@ const QuotationFormPage = () => {
     setCalculatedMaterials(prev => ({ ...prev, [key]: { ...prev[key], userModified: false } }));
   };
 
-  // ============ OUVERTURES HANDLERS ============
   const addOuverture = (roomIndex, workIndex) => {
     setRooms(prev => prev.map((room, i) => {
       if (i !== roomIndex) return room;
@@ -469,13 +448,10 @@ const QuotationFormPage = () => {
           if (j !== workIndex) return work;
           const newOuvertures = [...(work.ouvertures || [])];
           newOuvertures[ouvertureIndex] = { ...newOuvertures[ouvertureIndex], [field]: value };
-          
-          // Recalculer les surfaces
           const L = parseFloat(work.longueur) || 0;
           const H = parseFloat(work.hauteur) || 0;
           const surfaceBrute = L * H;
           const surfaceOuvertures = calculateOuverturesSurface(newOuvertures);
-          
           return { 
             ...work, 
             ouvertures: newOuvertures,
@@ -496,13 +472,10 @@ const QuotationFormPage = () => {
         works: room.works.map((work, j) => {
           if (j !== workIndex) return work;
           const newOuvertures = (work.ouvertures || []).filter((_, k) => k !== ouvertureIndex);
-          
-          // Recalculer les surfaces
           const L = parseFloat(work.longueur) || 0;
           const H = parseFloat(work.hauteur) || 0;
           const surfaceBrute = L * H;
           const surfaceOuvertures = calculateOuverturesSurface(newOuvertures);
-          
           return { 
             ...work, 
             ouvertures: newOuvertures,
@@ -570,7 +543,6 @@ const QuotationFormPage = () => {
     });
   };
 
-  // ============ VALIDATION ============
   const validateStep1 = () => {
     const newErrors = {};
     if (!clientInfo.client_name.trim()) newErrors.client_name = 'Le nom du client est requis';
@@ -657,11 +629,9 @@ const QuotationFormPage = () => {
   const getEpaisseurLabel = (epaisseur) => EPAISSEUR_OPTIONS.find(e => e.value === epaisseur)?.label || 'Standard';
   const getIsolantLabel = (isolant) => ISOLANT_OPTIONS.find(o => o.value === isolant)?.label || 'Sans isolant';
 
-  // ============ RENDER ============
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
         <div className="bg-white shadow">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
@@ -675,7 +645,6 @@ const QuotationFormPage = () => {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               {STEPS.map((step, index) => (
@@ -703,7 +672,6 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 1: Client Info */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-6">
@@ -748,7 +716,6 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 2: Room Selection */}
           {currentStep === 2 && (
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Sélection des pièces</h2>
@@ -796,7 +763,6 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 3: Work Types with Ouvertures and Isolant */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -867,7 +833,6 @@ const QuotationFormPage = () => {
                                 </button>
                               </div>
 
-                              {/* Épaisseur selector for cloison */}
                               {isCloison && (
                                 <div className="mb-4">
                                   <label className="block text-xs font-medium text-gray-600 mb-2">Épaisseur de la cloison</label>
@@ -887,7 +852,6 @@ const QuotationFormPage = () => {
                                 </div>
                               )}
 
-                              {/* Dimensions */}
                               <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">Longueur (L)</label>
@@ -909,7 +873,6 @@ const QuotationFormPage = () => {
                                 </div>
                               </div>
 
-                              {/* ✅ Isolant selector */}
                               {supportsIsolant && (
                                 <div className="mb-4">
                                   <label className="block text-s font-medium text-gray-600 mb-2">🧶 Isolant (optionnel)</label>
@@ -919,32 +882,20 @@ const QuotationFormPage = () => {
                                         key={option.value}
                                         type="button"
                                         onClick={() => updateWorkIsolant(roomIndex, workIndex, option.value)}
-                                        className={`p-2 text-xs rounded-lg border-2 transition-all text-left ${
-                                          work.isolant === option.value 
-                                            ? 'border-green-500 bg-green-50 text-green-700' 
-                                            : 'border-gray-200 hover:border-gray-300'
-                                        }`}
+                                        className={`p-2 text-xs rounded-lg border-2 transition-all text-left ${work.isolant === option.value ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-gray-300'}`}
                                       >
                                         <div className="font-medium">{option.label}</div>
-                                        {/* {option.prix > 0 && (
-                                          <div className="text-gray-500">{option.prix.toFixed(2)} DH/m²</div>
-                                        )} */}
                                       </button>
                                     ))}
                                   </div>
                                 </div>
                               )}
 
-                              {/* Ouvertures section */}
                               {supportsOuvertures && (
                                 <div className="border-t border-gray-200 pt-4 mt-4">
                                   <div className="flex items-center justify-between mb-3">
                                     <label className="text-s font-medium text-gray-600">Ouvertures (fenêtres / portes)</label>
-                                    <button
-                                      type="button"
-                                      onClick={() => addOuverture(roomIndex, workIndex)}
-                                      className="flex items-center gap-1 text-s text-green-600 hover:text-green-700 font-medium"
-                                    >
+                                    <button type="button" onClick={() => addOuverture(roomIndex, workIndex)} className="flex items-center gap-1 text-s text-green-600 hover:text-green-700 font-medium">
                                       <PlusIcon className="w-4 h-4" />
                                       Ajouter une ouverture
                                     </button>
@@ -954,7 +905,6 @@ const QuotationFormPage = () => {
                                     <div className="space-y-3">
                                       {work.ouvertures.map((ouverture, ouvertureIndex) => (
                                         <div key={ouvertureIndex} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                          {/* Row 1: Type selector + Delete button */}
                                           <div className="flex items-center justify-between gap-2 mb-3">
                                             <div className="flex gap-1 sm:gap-2">
                                               {OUVERTURE_TYPES.map((type) => (
@@ -962,62 +912,32 @@ const QuotationFormPage = () => {
                                                   key={type.value}
                                                   type="button"
                                                   onClick={() => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'type', type.value)}
-                                                  className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                                                    ouverture.type === type.value
-                                                      ? 'bg-green-100 text-green-700 border-2 border-green-500'
-                                                      : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
-                                                  }`}
+                                                  className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${ouverture.type === type.value ? 'bg-green-100 text-green-700 border-2 border-green-500' : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'}`}
                                                 >
                                                   <span className="text-base sm:text-lg">{type.icon}</span>
                                                   <span className="hidden sm:inline">{type.label}</span>
                                                 </button>
                                               ))}
                                             </div>
-                                            <button
-                                              type="button"
-                                              onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)}
-                                              className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                                            >
+                                            <button type="button" onClick={() => removeOuverture(roomIndex, workIndex, ouvertureIndex)} className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
                                               <TrashIcon className="w-4 h-4" />
                                             </button>
                                           </div>
                                           
-                                          {/* Row 2: Dimensions + Surface - Stacks on mobile */}
                                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                                            {/* Dimensions group */}
                                             <div className="flex items-center justify-center gap-2 sm:gap-3">
                                               <div className="flex items-center gap-1">
                                                 <span className="text-xs text-gray-500">L:</span>
-                                                <input
-                                                  type="number"
-                                                  min="0"
-                                                  step="0.01"
-                                                  placeholder="0.00"
-                                                  value={ouverture.largeur || ''}
-                                                  onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)}
-                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                                />
+                                                <input type="number" min="0" step="0.01" placeholder="0.00" value={ouverture.largeur || ''} onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'largeur', e.target.value)} className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500" />
                                                 <span className="text-gray-400 text-xs">m</span>
                                               </div>
-                                              
                                               <span className="text-gray-400 font-bold">×</span>
-                                              
                                               <div className="flex items-center gap-1">
                                                 <span className="text-xs text-gray-500">H:</span>
-                                                <input
-                                                  type="number"
-                                                  min="0"
-                                                  step="0.01"
-                                                  placeholder="0.00"
-                                                  value={ouverture.hauteur || ''}
-                                                  onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)}
-                                                  className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                                />
+                                                <input type="number" min="0" step="0.01" placeholder="0.00" value={ouverture.hauteur || ''} onChange={(e) => updateOuverture(roomIndex, workIndex, ouvertureIndex, 'hauteur', e.target.value)} className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500" />
                                                 <span className="text-gray-400 text-xs">m</span>
                                               </div>
                                             </div>
-                                            
-                                            {/* Surface result - Full width on mobile, right aligned on desktop */}
                                             <div className="px-3 py-1.5 bg-green-100 rounded-lg sm:ml-auto">
                                               <span className="text-sm font-semibold text-green-700 block text-center sm:text-right">
                                                 = {((parseFloat(ouverture.largeur) || 0) * (parseFloat(ouverture.hauteur) || 0)).toFixed(2)} m²
@@ -1027,7 +947,6 @@ const QuotationFormPage = () => {
                                         </div>
                                       ))}
                                       
-                                      {/* Summary - responsive */}
                                       {work.surface_ouvertures > 0 && (
                                         <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-100">
                                           <span className="text-center sm:text-right">Surface brute: <strong>{work.surface_brute || 0} m²</strong></span>
@@ -1050,7 +969,6 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Step 4: Summary */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-6">
@@ -1112,7 +1030,6 @@ const QuotationFormPage = () => {
                             )}
                           </div>
 
-                          {/* Liste des ouvertures */}
                           {hasOuvertures && (
                             <div className="mb-3 p-2 bg-orange-50 rounded text-xs text-orange-800">
                               <span className="font-medium">Ouvertures déduites : </span>
@@ -1125,7 +1042,6 @@ const QuotationFormPage = () => {
                             </div>
                           )}
 
-                          {/* ✅ Isolant sélectionné */}
                           {hasIsolant && (
                             <div className="mb-3 p-2 bg-green-50 rounded text-xs text-green-800">
                               <span className="font-medium">🧶 Isolant : </span>
@@ -1194,7 +1110,6 @@ const QuotationFormPage = () => {
                 );
               })}
 
-              {/* Totals */}
               <div className="bg-red-50 border border-red-200 rounded-lg shadow p-6">
                 <div className="flex flex-col items-end space-y-2">
                   <div className="flex justify-between w-full max-w-xs">
@@ -1214,16 +1129,10 @@ const QuotationFormPage = () => {
             </div>
           )}
 
-          {/* Navigation */}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-3 sm:gap-0 mt-8 pt-6 border-t border-gray-200">
-            {/* Bouton Précédent - Hidden on step 1 */}
             <div className="w-full sm:w-auto">
               {currentStep > 1 ? (
-                <button 
-                  type="button" 
-                  onClick={handlePrevious} 
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
+                <button type="button" onClick={handlePrevious} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                   <ArrowLeftIcon className="w-4 h-4" />
                   <span>Précédent</span>
                 </button>
@@ -1232,31 +1141,18 @@ const QuotationFormPage = () => {
               )}
             </div>
             
-            {/* Boutons Annuler + Suivant/Créer */}
             <div className="flex w-full sm:w-auto gap-2 sm:gap-3">
-              <Link 
-                to="/quotations" 
-                className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center transition-colors"
-              >
+              <Link to="/quotations" className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center transition-colors">
                 Annuler
               </Link>
               
               {currentStep < 4 ? (
-                <button 
-                  type="button" 
-                  onClick={handleNext} 
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors"
-                >
+                <button type="button" onClick={handleNext} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors">
                   <span>Suivant</span>
                   <ArrowRightIcon className="w-4 h-4" />
                 </button>
               ) : (
-                <button 
-                  type="button" 
-                  onClick={handleSubmit} 
-                  disabled={saving} 
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors"
-                >
+                <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors">
                   <CheckIcon className="w-5 h-5" />
                   <span>{saving ? 'Création...' : 'Créer le devis'}</span>
                 </button>
