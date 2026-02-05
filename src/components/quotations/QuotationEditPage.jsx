@@ -168,9 +168,17 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
   switch (workType) {
     case 'habillage_mur': {
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
-      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
-      const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
+      // === Montants calculation ===
+      const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;   // montants sur la longueur
+      const baseMontants = (nbLignes * 2) - 2;           // jusqu'à 3 m de hauteur
+
+      const hauteurSup = H - DTU.PROFIL_LONGUEUR;        // hauteur restante au-delà de 3 m
+      const extraMontants = hauteurSup > 0 
+        ? arrondiSup((hauteurSup * nbLignes * 2) / DTU.PROFIL_LONGUEUR) 
+        : 0;
+
+      const totalMontants = baseMontants + extraMontants;
+
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
       addIsolant(surface);
@@ -187,18 +195,29 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
       const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
       add(plaque.designation, arrondiSup(surface * 2), 'm²', plaque.prix);
-      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
-      const montantsParLigne = Math.max(1, arrondiSup(H / DTU.PROFIL_LONGUEUR));
-      const totalMontants = 2 * (nbLignesMontants - 1) * montantsParLigne;
+      
+      // === Montants calculation updated ===
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);            // lignes sur la longueur
+      const baseMontants = (nbLignesMontants * 2) - 2;                        // pour la première tranche de 3 m
+      const hauteurSup = H - DTU.PROFIL_LONGUEUR;                             // hauteur au-delà de 3 m
+      const extraMontants = hauteurSup > 0
+        ? arrondiSup((hauteurSup * nbLignesMontants * 2) / DTU.PROFIL_LONGUEUR)
+        : 0;
+
+      let totalMontants = baseMontants + extraMontants;
+      if (isDouble) totalMontants *= 2;
+
       const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
+
+      // === Add items ===
+      add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
+      
       if (isDouble) {
-        add(montantLabel, totalMontants * 2, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
         addIsolant(surface * 2);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
-        add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
         addIsolant(surface);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
