@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
+import { sendToOdoo } from '../../services/odooApi';
 import QRCodePdf from '../QRCodePdf';
 
 // Icons
@@ -58,6 +59,21 @@ const ArrowDownTrayIcon = ({ className }) => (
 const InformationCircleIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+  </svg>
+);
+
+// Odoo Icon
+const OdooIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
+  </svg>
+);
+
+// Spinner Icon
+const SpinnerIcon = ({ className }) => (
+  <svg className={`animate-spin ${className}`} fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
 );
 
@@ -123,6 +139,27 @@ const STATUS_CONFIG = {
   expired: { label: 'Expiré', bgColor: 'bg-orange-100', textColor: 'text-orange-700' },
 };
 
+// ============ TOAST COMPONENT ============
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+  const Icon = type === 'success' ? CheckCircleIcon : type === 'error' ? XCircleIcon : InformationCircleIcon;
+
+  return (
+    <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white ${bgColor} animate-slide-up`}>
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      <p className="text-sm font-medium">{message}</p>
+      <button onClick={onClose} className="ml-2 hover:opacity-80">
+        <XCircleIcon className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
 const QuotationDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -131,6 +168,21 @@ const QuotationDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Odoo sync state
+  const [odooLoading, setOdooLoading] = useState(false);
+  const [odooResult, setOdooResult] = useState(null); // { orderName: 'S00015' } après succès
+  
+  // Toast state
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'info') => {
+    setToast({ message, type });
+  };
+
+  const hideToast = () => {
+    setToast(null);
+  };
 
   // Fetch quotation
   const fetchQuotation = async () => {
@@ -167,7 +219,7 @@ const QuotationDetailPage = () => {
       await quotationAPI.updateStatus(id, newStatus);
       fetchQuotation();
     } catch (err) {
-      alert('Erreur lors du changement de statut');
+      showToast('Erreur lors du changement de statut', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -190,9 +242,37 @@ const QuotationDetailPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Erreur téléchargement PDF:', err);
-      alert('Erreur lors du téléchargement du PDF');
+      showToast('Erreur lors du téléchargement du PDF', 'error');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // ============ ODOO SYNC ============
+  const handleSendToOdoo = async () => {
+    // Validation
+    if (!quotation.client_email) {
+      showToast('L\'email du client est requis pour l\'envoi vers Odoo.', 'error');
+      return;
+    }
+
+    setOdooLoading(true);
+    
+    try {
+      const result = await sendToOdoo(quotation);
+      
+      setOdooResult({
+        orderName: result.orderName,
+        orderId: result.orderId,
+      });
+      
+      showToast(`✓ Devis synchronisé avec Odoo : ${result.orderName}`, 'success');
+      
+    } catch (err) {
+      console.error('Erreur Odoo:', err);
+      showToast(err.message || 'Erreur lors de l\'envoi vers Odoo', 'error');
+    } finally {
+      setOdooLoading(false);
     }
   };
 
@@ -265,6 +345,15 @@ const QuotationDetailPage = () => {
 
   return (
     <DashboardLayout>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={hideToast} 
+        />
+      )}
+
       <div className="space-y-6 print:space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 print:hidden">
@@ -281,6 +370,13 @@ const QuotationDetailPage = () => {
                 {statusConfig.label}
               </span>
               <span className="text-gray-500">Créé le {formatDate(quotation.created_at)}</span>
+              {/* Odoo sync badge */}
+              {odooResult && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  <CheckCircleIcon className="w-3 h-3" />
+                  Odoo: {odooResult.orderName}
+                </span>
+              )}
             </div>
           </div>
           
@@ -318,6 +414,30 @@ const QuotationDetailPage = () => {
                 </button>
               </>
             )}
+            
+            {/* Bouton Envoyer vers Odoo */}
+            <button
+              onClick={handleSendToOdoo}
+              disabled={odooLoading || actionLoading}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                odooResult 
+                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300' 
+                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+              }`}
+              title={odooResult ? 'Re-synchroniser avec Odoo' : 'Envoyer vers Odoo'}
+            >
+              {odooLoading ? (
+                <>
+                  <SpinnerIcon className="w-4 h-4" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <OdooIcon className="w-4 h-4" />
+                  {odooResult ? 'Re-sync Odoo' : 'Envoyer vers Odoo'}
+                </>
+              )}
+            </button>
             
             <button
               onClick={handleDownloadPdf}
@@ -530,6 +650,27 @@ const QuotationDetailPage = () => {
               )}
             </div>
 
+            {/* ✅ Odoo Sync Card */}
+            <div className="bg-purple-50 rounded-xl p-4 print:hidden">
+              <h3 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
+                <OdooIcon className="w-4 h-4" />
+                Intégration Odoo
+              </h3>
+              {odooResult ? (
+                <div className="text-xs text-purple-700 space-y-1">
+                  <p className="flex items-center gap-1">
+                    <CheckCircleIcon className="w-3 h-3 text-green-600" />
+                    Synchronisé avec succès
+                  </p>
+                  <p>Commande : <strong>{odooResult.orderName}</strong></p>
+                </div>
+              ) : (
+                <p className="text-xs text-purple-600">
+                  Cliquez sur "Envoyer vers Odoo" pour créer une commande de vente dans votre ERP.
+                </p>
+              )}
+            </div>
+
             {/* ✅ DTU Info Card */}
             <div className="bg-gray-50 rounded-xl p-4 print:hidden">
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -565,6 +706,23 @@ const QuotationDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* CSS for toast animation */}
+      <style>{`
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </DashboardLayout>
   );
 };
