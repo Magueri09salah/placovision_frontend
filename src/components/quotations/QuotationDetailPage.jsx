@@ -416,7 +416,7 @@ const QuotationDetailPage = () => {
             )}
             
             {/* Bouton Envoyer vers Odoo */}
-            <button
+            {/* <button
               onClick={handleSendToOdoo}
               disabled={odooLoading || actionLoading}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
@@ -437,7 +437,7 @@ const QuotationDetailPage = () => {
                   {odooResult ? 'Re-sync Odoo' : 'Envoyer vers Odoo'}
                 </>
               )}
-            </button>
+            </button> */}
             
             <button
               onClick={handleDownloadPdf}
@@ -446,7 +446,7 @@ const QuotationDetailPage = () => {
               title="Télécharger PDF"
             >
               <ArrowDownTrayIcon className="w-4 h-4" />
-              PDF
+              Télécharger le devis
             </button>
           </div>
         </div>
@@ -651,7 +651,7 @@ const QuotationDetailPage = () => {
             </div>
 
             {/* ✅ Odoo Sync Card */}
-            <div className="bg-purple-50 rounded-xl p-4 print:hidden">
+            {/* <div className="bg-purple-50 rounded-xl p-4 print:hidden">
               <h3 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
                 <OdooIcon className="w-4 h-4" />
                 Intégration Odoo
@@ -669,7 +669,7 @@ const QuotationDetailPage = () => {
                   Cliquez sur "Envoyer vers Odoo" pour créer une commande de vente dans votre ERP.
                 </p>
               )}
-            </div>
+            </div> */}
 
             {/* ✅ DTU Info Card */}
             <div className="bg-gray-50 rounded-xl p-4 print:hidden">

@@ -1,10 +1,12 @@
 // src/pages/QuotationFormPage.jsx
 // VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes) + isolant optionnel
+// + Envoi automatique vers Odoo à la création
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
+import { sendToOdoo } from '../../services/odooApi';
 
 // ============ ICONS ============
 const ArrowLeftIcon = ({ className }) => (
@@ -112,7 +114,6 @@ const PRIX_UNITAIRES = {
   fourrure: 21.12,
   vis_25mm_boite: 62.40,
   vis_9mm_boite: 69.60,
-  // Suspente décomposée en 3 éléments
   tige_filetee: 3.96,
   pivot: 0.96,
   cheville_laiton: 0.79,
@@ -200,19 +201,14 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
   switch (workType) {
     case 'habillage_mur': {
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
-            // === Montants calculation ===
-      const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;   // montants sur la longueur
-      const baseMontants = (nbLignes * 2) - 2;           // jusqu'à 3 m de hauteur
-
-      const hauteurSup = H - DTU.PROFIL_LONGUEUR;        // hauteur restante au-delà de 3 m
+      const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;
+      const baseMontants = (nbLignes * 2) - 2;
+      const hauteurSup = H - DTU.PROFIL_LONGUEUR;
       const extraMontants = hauteurSup > 0 
         ? arrondiSup((hauteurSup * nbLignes * 2) / DTU.PROFIL_LONGUEUR) 
         : 0;
-
       const totalMontants = baseMontants + extraMontants;
-
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
-
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
       add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
       addIsolant(surface);
@@ -232,10 +228,9 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
       add(plaque.designation, arrondiSup(surface * 2), 'm²', plaque.prix);
 
-      // === Montants calculation updated ===
-      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);            // lignes sur la longueur
-      const baseMontants = (nbLignesMontants * 2) - 2;                        // pour la première tranche de 3 m
-      const hauteurSup = H - DTU.PROFIL_LONGUEUR;                             // hauteur au-delà de 3 m
+      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      const baseMontants = (nbLignesMontants * 2) - 2;
+      const hauteurSup = H - DTU.PROFIL_LONGUEUR;
       const extraMontants = hauteurSup > 0
         ? arrondiSup((hauteurSup * nbLignesMontants * 2) / DTU.PROFIL_LONGUEUR)
         : 0;
@@ -245,7 +240,6 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
       const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
 
-      // === Add items ===
       add(montantLabel, totalMontants, 'unité', PRIX_UNITAIRES[config.montant]);
       
       if (isDouble) {
@@ -266,14 +260,13 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       add(bande.designation, bande.quantity, 'rlx', bande.prix);
       add('Enduit', kgToSacs(isDouble ? surface * 1.2 : surface), 'sac', PRIX_UNITAIRES.enduit_sac);
       break;
-}
+    }
 
     case 'plafond_ba13': {
       const l = H;
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
       add('Fourrure', arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.fourrure);
       
-      // Suspente décomposée : même quantité pour les 3 éléments (surface * 2.5)
       const qteSuspente = arrondiSup(surface * 2.5);
       add('Tige filetée', qteSuspente, 'unité', PRIX_UNITAIRES.tige_filetee);
       add('Pivot', qteSuspente, 'unité', PRIX_UNITAIRES.pivot);
@@ -296,6 +289,7 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(''); // '', 'creating', 'syncing'
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
 
@@ -322,7 +316,7 @@ const QuotationFormPage = () => {
           work.longueur, 
           work.hauteur, 
           room.room_type, 
-          work.epaisseur || '72',
+          work.epaisseur || '100',
           work.ouvertures || [],
           work.isolant || 'none'
         );
@@ -390,7 +384,7 @@ const QuotationFormPage = () => {
           longueur: '', 
           hauteur: '', 
           surface: 0, 
-          epaisseur: '72',
+          epaisseur: '100',
           ouvertures: [],
           isolant: 'none'
         }],
@@ -601,10 +595,16 @@ const QuotationFormPage = () => {
     if (currentStep > 1) { setCurrentStep(currentStep - 1); setFormError(null); }
   };
 
+  // ============ SUBMIT : Créer le devis + Envoyer vers Odoo ============
   const handleSubmit = async () => {
     setSaving(true);
+    setSavingStatus('creating');
     setFormError(null);
+    
+    let createdQuotation = null;
+    
     try {
+      // 1. Créer le devis dans PlacoVision
       const payload = {
         ...clientInfo,
         client_email: clientInfo.client_email || null,
@@ -615,7 +615,7 @@ const QuotationFormPage = () => {
           room_name: room.room_name,
           works: room.works.map((work, workIndex) => ({
             work_type: work.work_type,
-            epaisseur: work.epaisseur || '72',
+            epaisseur: work.epaisseur || '100',
             longueur: parseFloat(work.longueur) || 0,
             hauteur: parseFloat(work.hauteur) || 0,
             surface: parseFloat(work.surface) || 0,
@@ -631,8 +631,25 @@ const QuotationFormPage = () => {
           })),
         })),
       };
+      
       const response = await quotationAPI.create(payload);
-      navigate(`/quotations/${response.data.data.id}`);
+      createdQuotation = response.data.data;
+      
+      // 2. Envoyer vers Odoo (si email client présent)
+      if (createdQuotation && clientInfo.client_email) {
+        setSavingStatus('syncing');
+        try {
+          await sendToOdoo(createdQuotation);
+          console.log('✓ Devis synchronisé avec Odoo');
+        } catch (odooError) {
+          // Log l'erreur mais ne bloque pas la navigation
+          console.warn('Erreur sync Odoo (non bloquante):', odooError.message);
+        }
+      }
+      
+      // 3. Rediriger vers la page du devis
+      navigate(`/quotations/${createdQuotation.id}`);
+      
     } catch (error) {
       if (error.response?.status === 422) {
         setErrors(error.response.data.errors || {});
@@ -644,12 +661,20 @@ const QuotationFormPage = () => {
       }
     } finally {
       setSaving(false);
+      setSavingStatus('');
     }
   };
 
   const getOuvertureLabel = (type) => OUVERTURE_TYPES.find(o => o.value === type)?.label || type;
   const getEpaisseurLabel = (epaisseur) => EPAISSEUR_OPTIONS.find(e => e.value === epaisseur)?.label || 'Standard';
   const getIsolantLabel = (isolant) => ISOLANT_OPTIONS.find(o => o.value === isolant)?.label || 'Sans isolant';
+
+  // Texte du bouton selon l'état
+  const getSubmitButtonText = () => {
+    if (savingStatus === 'creating') return 'Création du devis...';
+    if (savingStatus === 'syncing') return 'Synchronisation Odoo...';
+    return 'Créer le devis';
+  };
 
   return (
     <DashboardLayout>
@@ -1148,13 +1173,22 @@ const QuotationFormPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Info Odoo */}
+              {clientInfo.client_email && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <p className="text-sm text-purple-800">
+                    <strong>🔄 Synchronisation Odoo :</strong> Ce devis sera automatiquement envoyé vers Odoo après création.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-3 sm:gap-0 mt-8 pt-6 border-t border-gray-200">
             <div className="w-full sm:w-auto">
               {currentStep > 1 ? (
-                <button type="button" onClick={handlePrevious} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                <button type="button" onClick={handlePrevious} disabled={saving} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
                   <ArrowLeftIcon className="w-4 h-4" />
                   <span>Précédent</span>
                 </button>
@@ -1175,8 +1209,20 @@ const QuotationFormPage = () => {
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 transition-colors">
-                  <CheckIcon className="w-5 h-5" />
-                  <span>{saving ? 'Création...' : 'Créer le devis'}</span>
+                  {saving ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>{getSubmitButtonText()}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="w-5 h-5" />
+                      <span>Créer le devis</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>
