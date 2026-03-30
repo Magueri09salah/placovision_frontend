@@ -90,14 +90,6 @@ const ROOM_ICONS = {
   autre: '📦',
 };
 
-// Odoo Status config
-const ODOO_STATUS_CONFIG = {
-  draft: { label: 'Devis', bgColor: 'bg-gray-100', textColor: 'text-gray-700', icon: '📝' },
-  sent: { label: 'Devis envoyé', bgColor: 'bg-blue-100', textColor: 'text-blue-700', icon: '📤' },
-  sale: { label: 'Confirmé', bgColor: 'bg-green-100', textColor: 'text-green-700', icon: '✅' },
-  cancel: { label: 'Annulé', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
-};
-
 // ✅ Work type icons et labels - DTU 25.41
 const WORK_TYPES = {
   habillage_mur: { 
@@ -147,6 +139,14 @@ const STATUS_CONFIG = {
   expired: { label: 'Expiré', bgColor: 'bg-orange-100', textColor: 'text-orange-700' },
 };
 
+// ✅ Odoo Status config
+const ODOO_STATUS_CONFIG = {
+  draft: { label: 'Devis', bgColor: 'bg-gray-100', textColor: 'text-gray-700', icon: '📝' },
+  sent: { label: 'Devis envoyé', bgColor: 'bg-blue-100', textColor: 'text-blue-700', icon: '📤' },
+  sale: { label: 'Confirmé', bgColor: 'bg-green-100', textColor: 'text-green-700', icon: '✅' },
+  cancel: { label: 'Annulé', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
+};
+
 // ============ TOAST COMPONENT ============
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -179,7 +179,6 @@ const QuotationDetailPage = () => {
   
   // Odoo sync state
   const [odooLoading, setOdooLoading] = useState(false);
-  const [odooResult, setOdooResult] = useState(null); // { orderName: 'S00015' } après succès
   
   // Toast state
   const [toast, setToast] = useState(null);
@@ -269,12 +268,10 @@ const QuotationDetailPage = () => {
     try {
       const result = await sendToOdoo(quotation);
       
-      setOdooResult({
-        orderName: result.orderName,
-        orderId: result.orderId,
-      });
-      
       showToast(`✓ Devis synchronisé avec Odoo : ${result.orderName}`, 'success');
+      
+      // Refresh quotation to get updated Odoo data
+      fetchQuotation();
       
     } catch (err) {
       console.error('Erreur Odoo:', err);
@@ -291,6 +288,17 @@ const QuotationDetailPage = () => {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -350,6 +358,7 @@ const QuotationDetailPage = () => {
   if (!quotation) return null;
 
   const statusConfig = STATUS_CONFIG[quotation.status] || STATUS_CONFIG.draft;
+  const odooStatusConfig = quotation.odoo_status ? ODOO_STATUS_CONFIG[quotation.odoo_status] : null;
 
   return (
     <DashboardLayout>
@@ -373,27 +382,20 @@ const QuotationDetailPage = () => {
               Retour aux devis
             </Link>
             <h1 className="text-2xl font-bold text-gray-900">{quotation.reference}</h1>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-3 mt-2">
               <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}>
                 {statusConfig.label}
               </span>
               <span className="text-gray-500">Créé le {formatDate(quotation.created_at)}</span>
-              {/* Odoo sync badge - from database or from current sync */}
-            {(quotation.odoo_order_name || odooResult) && (
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                quotation.odoo_status 
-                  ? ODOO_STATUS_CONFIG[quotation.odoo_status]?.bgColor || 'bg-purple-100'
-                  : 'bg-purple-100'
-              } ${
-                quotation.odoo_status 
-                  ? ODOO_STATUS_CONFIG[quotation.odoo_status]?.textColor || 'text-purple-700'
-                  : 'text-purple-700'
-              }`}>
-                <CheckCircleIcon className="w-3 h-3" />
-                Odoo: {quotation.odoo_order_name || odooResult?.orderName}
-                {quotation.odoo_status && ` (${ODOO_STATUS_CONFIG[quotation.odoo_status]?.label || quotation.odoo_status})`}
-              </span>
-            )}
+              
+              {/* ✅ Odoo sync badge from database */}
+              {quotation.odoo_order_name && (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  odooStatusConfig?.bgColor || 'bg-purple-100'
+                } ${odooStatusConfig?.textColor || 'text-purple-700'}`}>
+                  {odooStatusConfig?.icon || '🔄'} Odoo: {quotation.odoo_order_name}
+                </span>
+              )}
             </div>
           </div>
           
@@ -431,30 +433,6 @@ const QuotationDetailPage = () => {
                 </button>
               </>
             )}
-            
-            {/* Bouton Envoyer vers Odoo */}
-            {/* <button
-              onClick={handleSendToOdoo}
-              disabled={odooLoading || actionLoading}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
-                odooResult 
-                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300' 
-                  : 'bg-purple-600 hover:bg-purple-700 text-white'
-              }`}
-              title={odooResult ? 'Re-synchroniser avec Odoo' : 'Envoyer vers Odoo'}
-            >
-              {odooLoading ? (
-                <>
-                  <SpinnerIcon className="w-4 h-4" />
-                  Envoi...
-                </>
-              ) : (
-                <>
-                  <OdooIcon className="w-4 h-4" />
-                  {odooResult ? 'Re-sync Odoo' : 'Envoyer vers Odoo'}
-                </>
-              )}
-            </button> */}
             
             <button
               onClick={handleDownloadPdf}
@@ -667,26 +645,44 @@ const QuotationDetailPage = () => {
               )}
             </div>
 
-            {/* ✅ Odoo Sync Card */}
-            {/* <div className="bg-purple-50 rounded-xl p-4 print:hidden">
-              <h3 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
-                <OdooIcon className="w-4 h-4" />
-                Intégration Odoo
-              </h3>
-              {odooResult ? (
-                <div className="text-xs text-purple-700 space-y-1">
-                  <p className="flex items-center gap-1">
-                    <CheckCircleIcon className="w-3 h-3 text-green-600" />
-                    Synchronisé avec succès
-                  </p>
-                  <p>Commande : <strong>{odooResult.orderName}</strong></p>
+            {/* ✅ Odoo Integration Card */}
+            {quotation.odoo_order_name && (
+              <div className="bg-white rounded-xl shadow p-6 print:hidden">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <OdooIcon className="w-5 h-5 text-purple-600" />
+                  Odoo
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Commande</span>
+                    <span className="font-semibold text-gray-900">
+                      {quotation.odoo_order_name}
+                    </span>
+                  </div>
+                  
+                  {quotation.odoo_status && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Statut</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        ODOO_STATUS_CONFIG[quotation.odoo_status]?.bgColor || 'bg-gray-100'
+                      } ${ODOO_STATUS_CONFIG[quotation.odoo_status]?.textColor || 'text-gray-700'}`}>
+                        {ODOO_STATUS_CONFIG[quotation.odoo_status]?.icon} {ODOO_STATUS_CONFIG[quotation.odoo_status]?.label || quotation.odoo_status}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {quotation.odoo_synced_at && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Dernière sync</span>
+                      <span className="text-sm text-gray-500">
+                        {formatDateTime(quotation.odoo_synced_at)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <p className="text-xs text-purple-600">
-                  Cliquez sur "Envoyer vers Odoo" pour créer une commande de vente dans votre ERP.
-                </p>
-              )}
-            </div> */}
+              </div>
+            )}
 
             {/* ✅ DTU Info Card */}
             <div className="bg-gray-50 rounded-xl p-4 print:hidden">
@@ -710,43 +706,6 @@ const QuotationDetailPage = () => {
                   reference={quotation.reference}
                   size={160}
                 />
-              </div>
-            )}
-
-            {/* Odoo Integration Card */}
-            {(quotation.odoo_order_name || odooResult) && (
-              <div className="bg-white rounded-xl shadow p-6 print:hidden">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <OdooIcon className="w-5 h-5 text-purple-600" />
-                  Odoo
-                </h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Commande</span>
-                    <span className="font-semibold text-gray-900">
-                      {quotation.odoo_order_name || odooResult?.orderName}
-                    </span>
-                  </div>
-                  
-                  {quotation.odoo_status && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Statut</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${ODOO_STATUS_CONFIG[quotation.odoo_status]?.bgColor} ${ODOO_STATUS_CONFIG[quotation.odoo_status]?.textColor}`}>
-                        {ODOO_STATUS_CONFIG[quotation.odoo_status]?.icon} {ODOO_STATUS_CONFIG[quotation.odoo_status]?.label}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {quotation.odoo_synced_at && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Dernière sync</span>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(quotation.odoo_synced_at)}
-                      </span>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
