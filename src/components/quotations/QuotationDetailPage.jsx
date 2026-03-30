@@ -142,7 +142,7 @@ const STATUS_CONFIG = {
 // ✅ Odoo Status config
 const ODOO_STATUS_CONFIG = {
   draft: { label: 'Devis', bgColor: 'bg-gray-100', textColor: 'text-gray-700', icon: '📝' },
-  sent: { label: 'Devis envoyé', bgColor: 'bg-blue-100', textColor: 'text-blue-700', icon: '📤' },
+  sent: { label: 'En Attente', bgColor: 'bg-blue-100', textColor: 'text-blue-700', icon: '📤' },
   sale: { label: 'Confirmé', bgColor: 'bg-green-100', textColor: 'text-green-700', icon: '✅' },
   cancel: { label: 'Annulé', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
 };
