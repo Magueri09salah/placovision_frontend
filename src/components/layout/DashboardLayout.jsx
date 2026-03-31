@@ -1,6 +1,6 @@
 // src/components/layout/DashboardLayout.jsx
 import { useState } from 'react';
-import { href, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FolderIcon } from '@heroicons/react/24/outline';
 import { 
   Bars3Icon, 
@@ -11,7 +11,9 @@ import {
   KeyIcon,
   ArrowRightOnRectangleIcon,
   ChevronDownIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ClipboardDocumentListIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../common/Logo';
@@ -28,7 +30,9 @@ const DashboardLayout = ({ children }) => {
     { name: 'Mon profil', href: '/profile', icon: UserIcon },
     // { name: 'Projets', href: '/projects', icon: FolderIcon },
     ...(isProfessionnel ? [{ name: 'Mon entreprise', href: '/company', icon: BuildingOfficeIcon }] : []),
-    { name : 'Devis', href: '/quotations', icon: DocumentTextIcon },
+    { name: 'Devis', href: '/quotations', icon: DocumentTextIcon },
+    { name: 'Commandes', href: '/commandes', icon: ClipboardDocumentListIcon },
+    { name: 'Factures', href: '/factures', icon: BanknotesIcon },
     { name: 'Sécurité', href: '/security', icon: KeyIcon },
   ];
 
@@ -68,7 +72,7 @@ const DashboardLayout = ({ children }) => {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.name}

@@ -52,4 +52,48 @@ export const sendToOdoo = async (quotation, retryCount = 0) => {
   }
 };
 
-export default { sendToOdoo };
+export const acceptQuotation = async (quotationId) => {
+  try {
+    const response = await api.post(`/quotations/${quotationId}/odoo-accept`);
+    
+    if (response.data.success) {
+      return {
+        success: true,
+        message: response.data.message || 'Acceptation envoyée à Odoo',
+      };
+    } else {
+      throw new Error(response.data.message || 'Erreur lors de l\'acceptation');
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message 
+      || error.message 
+      || 'Erreur lors de l\'envoi de l\'acceptation à Odoo';
+    
+    throw new Error(errorMessage);
+  }
+};
+
+export const rejectQuotation = async (quotationId, reason = '') => {
+  try {
+    const response = await api.post(`/quotations/${quotationId}/odoo-reject`, {
+      reason: reason,
+    });
+    
+    if (response.data.success) {
+      return {
+        success: true,
+        message: response.data.message || 'Refus envoyé à Odoo',
+      };
+    } else {
+      throw new Error(response.data.message || 'Erreur lors du refus');
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message 
+      || error.message 
+      || 'Erreur lors de l\'envoi du refus à Odoo';
+    
+    throw new Error(errorMessage);
+  }
+};
+
+export default { sendToOdoo, acceptQuotation, rejectQuotation };

@@ -1,6 +1,8 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient ,QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
+// import queryClient from '../src/main';
 
 // Auth pages
 import LoginPage from './components/auth/LoginPage';
@@ -17,11 +19,19 @@ import ProjectListPage from './components/projects/ProjectListPage';
 import ProjectDetailPage from './components/projects/ProjectDetailPage';
 import ProjectFormPage from './components/projects/ProjectFormPage';
 
-//Quotation pages 
+// Quotation pages 
 import QuotationListPage from './components/quotations/QuotationListPage';
 import QuotationFormPage from './components/quotations/QuotationFormPage';
 import QuotationDetailPage from './components/quotations/QuotationDetailPage';
 import QuotationEditPage from './components/quotations/QuotationEditPage';
+
+// Commande pages
+import CommandeListPage from './components/commandes/CommandeListPage';
+import CommandeDetailPage from './components/commandes/CommandeDetailPage';
+
+// Facture pages
+import FactureListPage from './components/factures/FactureListPage';
+import FactureDetailPage from './components/factures/FactureDetailPage';
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -175,6 +185,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+
       {/* Quotation routes */}
       <Route
         path="/quotations"
@@ -184,7 +195,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/quotations/create"
         element={
@@ -193,7 +203,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/quotations/:id"
         element={
@@ -202,16 +211,50 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
-       <Route 
+      <Route 
         path="/quotations/:id/edit" 
         element={
-            <ProtectedRoute>
-              <QuotationEditPage />
-            </ProtectedRoute>
-          } 
-       />
+          <ProtectedRoute>
+            <QuotationEditPage />
+          </ProtectedRoute>
+        } 
+      />
 
+      {/* Commande routes */}
+      <Route
+        path="/commandes"
+        element={
+          <ProtectedRoute>
+            <CommandeListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/commandes/:id"
+        element={
+          <ProtectedRoute>
+            <CommandeDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Facture routes */}
+      <Route
+        path="/factures"
+        element={
+          <ProtectedRoute>
+            <FactureListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/factures/:id"
+        element={
+          <ProtectedRoute>
+            <FactureDetailPage />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Redirect root to dashboard or login */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -221,17 +264,28 @@ const AppRoutes = () => {
     </Routes>
     <PWAInstallBanner />
     </>
-     
   );
 };
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
+
 const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 
