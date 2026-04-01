@@ -1,5 +1,5 @@
 // src/hooks/useNotifications.js
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationAPI } from '../services/notificationApi';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ export const useUnreadCount = () => {
       return response.data.data.count;
     },
     enabled: isAuthenticated,
-    refetchInterval: 10, // Fallback polling toutes les 30s
+    refetchInterval: 30000, // Fallback polling toutes les 30s
   });
 
   // ============ WEBSOCKET LISTENER ============
@@ -38,7 +38,33 @@ export const useUnreadCount = () => {
         return (old || 0) + 1;
       });
 
-      // Invalider la liste des notifications
+      // Ajouter la nouvelle notification directement dans le cache de la liste
+      queryClient.setQueryData(['notifications', 'list', { per_page: 10 }], (oldData) => {
+        if (!oldData) return oldData;
+        
+        const newNotification = {
+          id: data.id,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          icon: data.icon,
+          link: data.link,
+          data: data.data,
+          read_at: data.read_at,
+          created_at: data.created_at,
+        };
+
+        return {
+          ...oldData,
+          data: [newNotification, ...oldData.data],
+          meta: {
+            ...oldData.meta,
+            total: (oldData.meta?.total || 0) + 1,
+          },
+        };
+      });
+
+      // Aussi invalider pour forcer un refresh au prochain focus
       queryClient.invalidateQueries({ queryKey: ['notifications', 'list'] });
     });
 
@@ -60,13 +86,70 @@ export const useUnreadCount = () => {
  * Hook pour la liste des notifications
  */
 export const useNotifications = (params = {}) => {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const { user, isAuthenticated } = useAuth();
+
+  const query = useQuery({
     queryKey: ['notifications', 'list', params],
     queryFn: async () => {
       const response = await notificationAPI.getAll(params);
       return response.data;
     },
+    enabled: isAuthenticated,
   });
+
+  // ============ WEBSOCKET LISTENER POUR LA LISTE ============
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id || !window.Echo) {
+      return;
+    }
+
+    const channel = window.Echo.private(`user.${user.id}`);
+
+    // Écouter les nouvelles notifications
+    const handleNewNotification = (data) => {
+      console.log('📋 Mise à jour liste notifications:', data);
+      
+      // Ajouter la nouvelle notification dans le cache
+      queryClient.setQueryData(['notifications', 'list', params], (oldData) => {
+        if (!oldData) return oldData;
+        
+        const newNotification = {
+          id: data.id,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          icon: data.icon,
+          link: data.link,
+          data: data.data,
+          read_at: data.read_at,
+          created_at: data.created_at,
+        };
+
+        // Vérifier si la notification existe déjà
+        const exists = oldData.data?.some(n => n.id === data.id);
+        if (exists) return oldData;
+
+        return {
+          ...oldData,
+          data: [newNotification, ...(oldData.data || [])],
+          meta: {
+            ...oldData.meta,
+            total: (oldData.meta?.total || 0) + 1,
+          },
+        };
+      });
+    };
+
+    channel.listen('.notification.created', handleNewNotification);
+
+    // Cleanup
+    return () => {
+      channel.stopListening('.notification.created');
+    };
+  }, [isAuthenticated, user?.id, queryClient, params]);
+
+  return query;
 };
 
 /**
