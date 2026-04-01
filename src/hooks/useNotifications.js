@@ -18,7 +18,7 @@ export const useUnreadCount = () => {
       return response.data.data.count;
     },
     enabled: isAuthenticated,
-    refetchInterval: 5000, // Fallback polling toutes les 30s
+    refetchInterval: 10, // Fallback polling toutes les 30s
   });
 
   // ============ WEBSOCKET LISTENER ============
