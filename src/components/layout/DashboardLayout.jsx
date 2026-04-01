@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../common/Logo';
+import NotificationBell from '../notifications/NotificationBell';
 
 const DashboardLayout = ({ children }) => {
   const { user, company, logout, isProfessionnel } = useAuth();
@@ -128,55 +129,61 @@ const DashboardLayout = ({ children }) => {
               <Logo size="small" showText={false} />
             </div>
 
-            {/* User menu */}
-            <div className="relative ml-auto">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
-              >
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                  {user?.first_name?.[0]}{user?.last_name?.[0]}
-                </div>
-                <span className="hidden sm:block text-sm font-medium text-neutral-700">
-                  {user?.first_name}
-                </span>
-                <ChevronDownIcon className="w-4 h-4 text-neutral-400" />
-              </button>
+            {/* Right side: Notifications + User menu */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Notification Bell */}
+              <NotificationBell />
 
-              {userMenuOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-100 py-1 z-20">
-                    <Link
-                      to="/profile"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      Mon profil
-                    </Link>
-                    <Link
-                      to="/security"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                    >
-                      <KeyIcon className="w-4 h-4" />
-                      Sécurité
-                    </Link>
-                    <hr className="my-1 border-neutral-100" />
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
-                    >
-                      <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                      Déconnexion
-                    </button>
+              {/* User menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {user?.first_name?.[0]}{user?.last_name?.[0]}
                   </div>
-                </>
-              )}
+                  <span className="hidden sm:block text-sm font-medium text-neutral-700">
+                    {user?.first_name}
+                  </span>
+                  <ChevronDownIcon className="w-4 h-4 text-neutral-400" />
+                </button>
+
+                {userMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10"
+                      onClick={() => setUserMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-100 py-1 z-20">
+                      <Link
+                        to="/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        Mon profil
+                      </Link>
+                      <Link
+                        to="/security"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <KeyIcon className="w-4 h-4" />
+                        Sécurité
+                      </Link>
+                      <hr className="my-1 border-neutral-100" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
+                      >
+                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        Déconnexion
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </header>
