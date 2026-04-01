@@ -37,6 +37,8 @@ import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { UpdateAvailable } from './components/UpdateAvailable';
 
+import './services/echo';
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-neutral-50">
