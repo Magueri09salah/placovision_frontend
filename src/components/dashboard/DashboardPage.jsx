@@ -5,33 +5,24 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../layout/DashboardLayout';
 import Card from '../common/Card';
 import { 
-  AreaChart, 
-  Area, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
   BarChart,
   Bar,
 } from 'recharts';
 import { 
-  CurrencyDollarIcon,
   DocumentTextIcon,
-  CheckCircleIcon,
-  ClockIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   PlusIcon,
   EyeIcon,
-  BuildingOfficeIcon,
-  CalendarDaysIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import {quotationAPI} from '../../services/quotationApi';
+import { quotationAPI } from '../../services/quotationApi';
 
 // ============ COMPOSANT KPI CARD ============
 const KPICard = ({ title, value, subtitle, icon: Icon, trend, trendValue, color = 'primary', loading = false }) => {
@@ -90,22 +81,6 @@ const KPICard = ({ title, value, subtitle, icon: Icon, trend, trendValue, color 
 
 // ============ COMPOSANT DEVIS RECENT ============
 const RecentQuotation = ({ quotation }) => {
-  // const statusColors = {
-  //   draft: 'bg-neutral-100 text-neutral-600',
-  //   sent: 'bg-blue-100 text-blue-700',
-  //   accepted: 'bg-green-100 text-green-700',
-  //   rejected: 'bg-red-100 text-red-700',
-  //   expired: 'bg-orange-100 text-orange-700',
-  // };
-
-  // const statusLabels = {
-  //   draft: 'Brouillon',
-  //   sent: 'Envoyé',
-  //   accepted: 'Accepté',
-  //   rejected: 'Refusé',
-  //   expired: 'Expiré',
-  // };
-
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
@@ -122,9 +97,6 @@ const RecentQuotation = ({ quotation }) => {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-neutral-800">{quotation.reference}</span>
-          {/* <span className={`px-2 py-0.5 rounded-full text-xs font-medium `}>
-            {statusLabels[quotation.status]}
-          </span> */}
         </div>
         <p className="text-sm text-neutral-500 truncate">{quotation.client_name}</p>
       </div>
@@ -138,9 +110,38 @@ const RecentQuotation = ({ quotation }) => {
   );
 };
 
+// ============ SKELETON COMPONENTS ============
+const ChartSkeleton = () => (
+  <div className="animate-pulse h-full flex flex-col justify-end gap-2 px-4">
+    {[60, 40, 80, 30, 55].map((h, i) => (
+      <div key={i} className="flex items-center gap-3">
+        <div className="h-4 bg-neutral-200 rounded w-20" />
+        <div className="h-5 bg-neutral-200 rounded" style={{ width: `${h}%` }} />
+      </div>
+    ))}
+  </div>
+);
+
+const QuotationListSkeleton = () => (
+  <div className="animate-pulse space-y-1">
+    {[1, 2, 3, 4, 5].map((i) => (
+      <div key={i} className="flex items-center justify-between py-3">
+        <div className="space-y-2 flex-1">
+          <div className="h-4 bg-neutral-200 rounded w-32" />
+          <div className="h-3 bg-neutral-100 rounded w-48" />
+        </div>
+        <div className="space-y-2 text-right">
+          <div className="h-4 bg-neutral-200 rounded w-24 ml-auto" />
+          <div className="h-3 bg-neutral-100 rounded w-16 ml-auto" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 // ============ COMPOSANT PRINCIPAL ============
 const DashboardPage = () => {
-  const { user, company, isProfessionnel } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [recentQuotations, setRecentQuotations] = useState([]);
@@ -154,36 +155,24 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch stats from backend
-      const statsResponse = await quotationAPI.getStats();
-      if (statsResponse.data.success) {
-        setStats(statsResponse.data.data);
-      }
 
-      // Fetch recent quotations
-      const quotationsResponse = await quotationAPI.getAll({ per_page: 5 });
-      if (quotationsResponse.data.success) {
-        setRecentQuotations(quotationsResponse.data.data || []);
+      const [statsRes, quotationsRes] = await Promise.all([
+        quotationAPI.getStats(),
+        quotationAPI.getAll({ per_page: 5 }),
+      ]);
+
+      if (statsRes.data.success) {
+        setStats(statsRes.data.data);
       }
-      
+      if (quotationsRes.data.success) {
+        setRecentQuotations(quotationsRes.data.data || []);
+      }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('Impossible de charger les données du tableau de bord');
     } finally {
       setLoading(false);
     }
-  };
-
-  // ============ HELPERS DE FORMATAGE ============
-  const formatMoney = (amount) => {
-    if (amount >= 1000000) {
-      return (amount / 1000000).toFixed(1) + 'M';
-    }
-    if (amount >= 1000) {
-      return (amount / 1000).toFixed(0) + 'K';
-    }
-    return amount?.toString() || '0';
   };
 
   const formatFullMoney = (amount) => {
@@ -194,14 +183,6 @@ const DashboardPage = () => {
     }).format(amount || 0);
   };
 
-  // Déterminer la tendance (up, down, ou neutral)
-  const getTrend = (value) => {
-    if (value > 0) return 'up';
-    if (value < 0) return 'down';
-    return null;
-  };
-
-  // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -219,51 +200,10 @@ const DashboardPage = () => {
     return null;
   };
 
-  // ============ LOADING STATE ============
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="space-y-6">
-          {/* Welcome skeleton */}
-          <div className="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-6 text-white animate-pulse">
-            <div className="h-8 bg-white/20 rounded w-64 mb-2"></div>
-            <div className="h-4 bg-white/20 rounded w-96"></div>
-          </div>
-
-          {/* KPI skeletons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <KPICard key={i} loading={true} />
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // ============ ERROR STATE ============
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mb-4" />
-          <p className="text-neutral-600 mb-4">{error}</p>
-          <button
-            onClick={fetchDashboardData}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            Réessayer
-          </button>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // ============ RENDER ============
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* ============ WELCOME SECTION ============ */}
+        {/* ============ WELCOME SECTION (renders instantly) ============ */}
         <div className="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-6 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -284,95 +224,30 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* ============ KPI CARDS ============ */}
-        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <KPICard
-            title="Devis créés"
-            value={stats?.quotations_this_month || 0}
-            subtitle="Ce mois"
-            icon={DocumentTextIcon}
-            trend={getTrend(stats?.quotations_trend)}
-            trendValue={`${stats?.quotations_trend > 0 ? '+' : ''}${stats?.quotations_trend || 0} vs mois dernier`}
-            color="blue"
-          />
-          <KPICard
-            title="Taux de conversion"
-            value={(stats?.conversion_rate || 0) + '%'}
-            subtitle="Acceptés / Traités"
-            icon={CheckCircleIcon}
-            trend={getTrend(stats?.conversion_trend)}
-            trendValue={`${stats?.conversion_trend > 0 ? '+' : ''}${stats?.conversion_trend || 0}% vs mois dernier`}
-            color="green"
-          />
-          <KPICard
-            title="En attente"
-            value={stats?.pending || 0}
-            subtitle={formatFullMoney(stats?.pending_amount || 0)}
-            icon={ClockIcon}
-            color="orange"
-          />
-        </div> */}
+        {/* ============ ERROR BANNER (inline, non-blocking) ============ */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <ExclamationTriangleIcon className="w-6 h-6 text-red-500 shrink-0" />
+            <p className="text-red-700 flex-1">{error}</p>
+            <button
+              onClick={fetchDashboardData}
+              className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors shrink-0"
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
 
-        {/* ============ CHARTS ROW ============ */}
+        {/* ============ CHART SECTION ============ */}
         <div className="grid grid-cols-1 gap-6">
-          {/* Revenue Chart */}
-          {/* <Card className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-neutral-800">
-                Statistique
-              </h2>
-              <span className="text-sm text-neutral-500">6 derniers mois</span>
-            </div>
-            <div className="h-72">
-              {stats?.monthly_data && stats.monthly_data.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={stats.monthly_data}>
-                    <defs>
-                      <linearGradient id="colorCa" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#9E3D36" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#9E3D36" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                      tickFormatter={(value) => formatMoney(value)}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="ca" 
-                      name="Chiffre d'affaires"
-                      stroke="#9E3D36" 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorCa)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-neutral-400">
-                  Aucune donnée disponible
-                </div>
-              )}
-            </div>
-          </Card> */}
-
-          {/* Work Types Bar Chart */}
           <Card>
             <h2 className="text-lg font-semibold text-neutral-800 mb-6">
               Types de travaux
             </h2>
             <div className="h-64">
-              {stats?.work_type_distribution && stats.work_type_distribution.length > 0 ? (
+              {loading ? (
+                <ChartSkeleton />
+              ) : stats?.work_type_distribution && stats.work_type_distribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
                     data={stats.work_type_distribution} 
@@ -394,7 +269,7 @@ const DashboardPage = () => {
                       tick={{ fill: '#6b7280', fontSize: 11 }}
                       width={90}
                     />
-                    <Tooltip />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar 
                       dataKey="count" 
                       radius={[0, 4, 4, 0]}
@@ -413,13 +288,10 @@ const DashboardPage = () => {
               )}
             </div>
           </Card>
-
-
         </div>
 
-        {/* ============ SECOND ROW ============ */}
+        {/* ============ RECENT QUOTATIONS ============ */}
         <div className="grid grid-cols-1 gap-6">
-          {/* Recent Quotations */}
           <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-800">
@@ -434,7 +306,9 @@ const DashboardPage = () => {
               </Link>
             </div>
             <div>
-              {recentQuotations.length > 0 ? (
+              {loading ? (
+                <QuotationListSkeleton />
+              ) : recentQuotations.length > 0 ? (
                 recentQuotations.map((quotation) => (
                   <RecentQuotation key={quotation.id} quotation={quotation} />
                 ))
@@ -452,57 +326,7 @@ const DashboardPage = () => {
               )}
             </div>
           </Card>
-
-          
         </div>
-
-        {/* ============ QUICK ACTIONS & INFO ============ */}
-        {/* <div className="grid grid-cols-1 gap-6"> */}
-          {/* Quick Actions */}
-          {/* <Card>
-            <h2 className="text-lg font-semibold text-neutral-800 mb-4">
-              Actions rapides
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              <Link
-                to="/quotations/create"
-                className="flex flex-col items-center gap-2 p-4 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors group"
-              >
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <PlusIcon className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-primary">Nouveau devis</span>
-              </Link>
-              <Link
-                to="/quotations?status=sent"
-                className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors group"
-              >
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <ClockIcon className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-blue-600">En attente ({stats?.pending || 0})</span>
-              </Link>
-              <Link
-                to="/projects"
-                className="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors group"
-              >
-                <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <BuildingOfficeIcon className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-purple-600">Mes projets</span>
-              </Link>
-              <Link
-                to="/quotations?status=accepted"
-                className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group"
-              >
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <CheckCircleIcon className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-green-600">Acceptés ({stats?.accepted || 0})</span>
-              </Link>
-            </div>
-          </Card> */}
-        {/* </div> */}
       </div>
     </DashboardLayout>
   );

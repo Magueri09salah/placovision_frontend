@@ -17,12 +17,6 @@ const BanknotesIcon = ({ className }) => (
   </svg>
 );
 
-const ClipboardDocumentListIcon = ({ className }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-  </svg>
-);
-
 const DocumentTextIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -61,7 +55,6 @@ const STATUS_CONFIG = {
   annulee: { label: 'Annulée', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
 };
 
-// Room type icons
 const ROOM_ICONS = {
   salon_sejour: '🛋️',
   chambre: '🛏️',
@@ -74,7 +67,39 @@ const ROOM_ICONS = {
   autre: '📦',
 };
 
-// Toast component
+// Confirm Modal
+const ConfirmModal = ({ isOpen, title, message, confirmLabel, confirmColor, onConfirm, onCancel, isLoading }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium text-sm disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm disabled:opacity-50 ${confirmColor}`}
+          >
+            {isLoading && <SpinnerIcon className="w-4 h-4" />}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Toast
 const Toast = ({ message, type, onClose }) => {
   const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
   const Icon = type === 'success' ? CheckCircleIcon : XCircleIcon;
@@ -93,8 +118,8 @@ const Toast = ({ message, type, onClose }) => {
 const FactureDetailPage = () => {
   const { id } = useParams();
   const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
-  // React Query
   const { data: facture, isLoading, isError } = useFacture(id);
   const updateStatusMutation = useUpdateFactureStatus();
   const downloadPdfMutation = useDownloadFacturePdf();
@@ -104,10 +129,36 @@ const FactureDetailPage = () => {
     setTimeout(() => setToast(null), 5000);
   };
 
-  const handleStatusChange = async (newStatus) => {
+  const openConfirm = (action) => {
+    if (action === 'payee') {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Confirmer le paiement',
+        message: 'Êtes-vous sûr de vouloir marquer cette facture comme payée ? Cette action confirmera la réception du paiement.',
+        confirmLabel: 'Confirmer le paiement',
+        confirmColor: 'bg-green-600 hover:bg-green-700',
+        status: 'payee',
+      });
+    } else if (action === 'annulee') {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Annuler la facture',
+        message: 'Êtes-vous sûr de vouloir annuler cette facture ? Cette action est irréversible.',
+        confirmLabel: 'Oui, annuler',
+        confirmColor: 'bg-red-600 hover:bg-red-700',
+        status: 'annulee',
+      });
+    }
+  };
+
+  const handleConfirmAction = async () => {
     try {
-      await updateStatusMutation.mutateAsync({ id, status: newStatus });
-      showToast('Statut mis à jour avec succès', 'success');
+      await updateStatusMutation.mutateAsync({ id, status: confirmModal.status });
+      setConfirmModal({ isOpen: false });
+      showToast(
+        confirmModal.status === 'payee' ? 'Facture marquée comme payée' : 'Facture annulée',
+        'success'
+      );
     } catch (err) {
       showToast('Erreur lors de la mise à jour du statut', 'error');
     }
@@ -138,7 +189,6 @@ const FactureDetailPage = () => {
     }).format(amount || 0);
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -152,7 +202,6 @@ const FactureDetailPage = () => {
     );
   }
 
-  // Error state
   if (isError || !facture) {
     return (
       <DashboardLayout>
@@ -167,13 +216,22 @@ const FactureDetailPage = () => {
   }
 
   const statusConfig = STATUS_CONFIG[facture.status] || STATUS_CONFIG.en_attente;
-  const commande = facture.commande;
   const quotation = facture.quotation;
 
   return (
     <DashboardLayout>
-      {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        confirmColor={confirmModal.confirmColor}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmModal({ isOpen: false })}
+        isLoading={updateStatusMutation.isPending}
+      />
 
       <div className="space-y-6">
         {/* Header */}
@@ -200,11 +258,10 @@ const FactureDetailPage = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            {/* Download PDF */}
             <button
               onClick={handleDownloadPdf}
               disabled={downloadPdfMutation.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
             >
               {downloadPdfMutation.isPending ? (
                 <SpinnerIcon className="w-4 h-4" />
@@ -214,23 +271,18 @@ const FactureDetailPage = () => {
               Télécharger PDF
             </button>
 
-            {/* Status Actions */}
             {facture.status === 'en_attente' && (
               <>
                 <button
-                  onClick={() => handleStatusChange('payee')}
-                  disabled={updateStatusMutation.isPending}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  onClick={() => openConfirm('payee')}
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
                 >
-                  {updateStatusMutation.isPending ? <SpinnerIcon className="w-4 h-4" /> : '✅'}
-                  Marquer payée
+                  💰 Payer
                 </button>
                 <button
-                  onClick={() => handleStatusChange('annulee')}
-                  disabled={updateStatusMutation.isPending}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  onClick={() => openConfirm('annulee')}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
                 >
-                  {updateStatusMutation.isPending ? <SpinnerIcon className="w-4 h-4" /> : '❌'}
                   Annuler
                 </button>
               </>
@@ -347,43 +399,27 @@ const FactureDetailPage = () => {
               </div>
             </div>
 
-            {/* Linked Documents */}
+            {/* Linked Devis */}
             <div className="bg-white rounded-xl shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents liés</h2>
-              
-              <div className="space-y-3">
-                {/* Commande */}
-                <Link
-                  to={`/commandes/${commande?.id}`}
-                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <ClipboardDocumentListIcon className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Commande</p>
-                    <p className="text-sm text-gray-500">{commande?.numero}</p>
-                  </div>
-                </Link>
-
-                {/* Devis */}
-                <Link
-                  to={`/quotations/${quotation?.id}`}
-                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <DocumentTextIcon className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Devis</p>
-                    <p className="text-sm text-gray-500">{quotation?.reference}</p>
-                  </div>
-                </Link>
-              </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Devis associé</h2>
+              <Link
+                to={`/quotations/${quotation?.id}`}
+                className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <DocumentTextIcon className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-gray-900">{quotation?.reference || '-'}</p>
+                  <p className="text-sm text-gray-500">{quotation?.client_name}</p>
+                </div>
+              </Link>
             </div>
 
-            {/* Payment Info */}
+            {/* Status Info */}
             {facture.status === 'en_attente' && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <h3 className="font-semibold text-yellow-800 mb-2">⏳ En attente de paiement</h3>
                 <p className="text-sm text-yellow-700">
-                  Cette facture est en attente de règlement. Cliquez sur "Marquer payée" une fois le paiement reçu.
+                  Cette facture est en attente de règlement. Cliquez sur "Payer" une fois le paiement reçu.
                 </p>
               </div>
             )}
@@ -391,18 +427,14 @@ const FactureDetailPage = () => {
             {facture.status === 'payee' && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <h3 className="font-semibold text-green-800 mb-2">✅ Facture payée</h3>
-                <p className="text-sm text-green-700">
-                  Cette facture a été réglée.
-                </p>
+                <p className="text-sm text-green-700">Cette facture a été réglée.</p>
               </div>
             )}
 
             {facture.status === 'annulee' && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                 <h3 className="font-semibold text-red-800 mb-2">❌ Facture annulée</h3>
-                <p className="text-sm text-red-700">
-                  Cette facture a été annulée.
-                </p>
+                <p className="text-sm text-red-700">Cette facture a été annulée.</p>
               </div>
             )}
           </div>

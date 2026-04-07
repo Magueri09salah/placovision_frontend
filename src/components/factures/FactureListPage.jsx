@@ -49,7 +49,6 @@ const FactureListPage = () => {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
-  // React Query
   const { data, isLoading, isError } = useFactures({
     page,
     per_page: 10,
@@ -59,7 +58,6 @@ const FactureListPage = () => {
 
   const { data: stats } = useFacturesStats();
 
-  // Handlers
   const handleSearch = (e) => {
     e.preventDefault();
     setSearch(searchInput);
@@ -131,7 +129,6 @@ const FactureListPage = () => {
         {/* Filters */}
         <div className="bg-white rounded-xl shadow p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <form onSubmit={handleSearch} className="flex-1">
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -145,7 +142,6 @@ const FactureListPage = () => {
               </div>
             </form>
 
-            {/* Status Filter */}
             <div className="flex gap-2 flex-wrap">
               {[
                 { value: 'all', label: 'Toutes' },
@@ -192,7 +188,7 @@ const FactureListPage = () => {
                     <tr>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Numéro</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Client</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Commande</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Devis</th>
                       <th className="text-center py-3 px-4 font-medium text-gray-600">Status</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-600">Total TTC</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Date émission</th>
@@ -209,14 +205,14 @@ const FactureListPage = () => {
                             <span className="font-semibold text-gray-900">{facture.numero}</span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="text-gray-700">{facture.commande?.quotation?.client_name || '-'}</span>
+                            <span className="text-gray-700">{facture.quotation?.client_name || '-'}</span>
                           </td>
                           <td className="py-3 px-4">
                             <Link
-                              to={`/commandes/${facture.commande?.id}`}
+                              to={`/quotations/${facture.quotation?.id}`}
                               className="text-red-700 hover:underline"
                             >
-                              {facture.commande?.numero || '-'}
+                              {facture.quotation?.reference || '-'}
                             </Link>
                           </td>
                           <td className="py-3 px-4 text-center">

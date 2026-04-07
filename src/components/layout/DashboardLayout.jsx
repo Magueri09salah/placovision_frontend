@@ -32,7 +32,7 @@ const DashboardLayout = ({ children }) => {
     // { name: 'Projets', href: '/projects', icon: FolderIcon },
     ...(isProfessionnel ? [{ name: 'Mon entreprise', href: '/company', icon: BuildingOfficeIcon }] : []),
     { name: 'Devis', href: '/quotations', icon: DocumentTextIcon },
-    { name: 'Commandes', href: '/commandes', icon: ClipboardDocumentListIcon },
+    // { name: 'Commandes', href: '/commandes', icon: ClipboardDocumentListIcon },
     { name: 'Factures', href: '/factures', icon: BanknotesIcon },
     { name: 'Sécurité', href: '/security', icon: KeyIcon },
   ];

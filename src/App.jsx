@@ -223,7 +223,7 @@ const AppRoutes = () => {
       />
 
       {/* Commande routes */}
-      <Route
+      {/* <Route
         path="/commandes"
         element={
           <ProtectedRoute>
@@ -238,7 +238,7 @@ const AppRoutes = () => {
             <CommandeDetailPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       {/* Facture routes */}
       <Route
