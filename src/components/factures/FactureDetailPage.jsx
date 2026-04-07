@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { useFacture, useUpdateFactureStatus, useDownloadFacturePdf } from '../../hooks/useFactures';
+import { useFacture, useUpdateFactureStatus } from '../../hooks/useFactures';
 
 // Icons
 const ArrowLeftIcon = ({ className }) => (
@@ -23,9 +23,9 @@ const DocumentTextIcon = ({ className }) => (
   </svg>
 );
 
-const ArrowDownTrayIcon = ({ className }) => (
+const ArrowTopRightOnSquareIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
   </svg>
 );
 
@@ -122,7 +122,6 @@ const FactureDetailPage = () => {
 
   const { data: facture, isLoading, isError } = useFacture(id);
   const updateStatusMutation = useUpdateFactureStatus();
-  const downloadPdfMutation = useDownloadFacturePdf();
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -161,15 +160,6 @@ const FactureDetailPage = () => {
       );
     } catch (err) {
       showToast('Erreur lors de la mise à jour du statut', 'error');
-    }
-  };
-
-  const handleDownloadPdf = async () => {
-    try {
-      await downloadPdfMutation.mutateAsync({ id, numero: facture.numero });
-      showToast('Téléchargement du PDF réussi', 'success');
-    } catch (err) {
-      showToast('Erreur lors du téléchargement du PDF', 'error');
     }
   };
 
@@ -258,20 +248,19 @@ const FactureDetailPage = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloadPdfMutation.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              {downloadPdfMutation.isPending ? (
-                <SpinnerIcon className="w-4 h-4" />
-              ) : (
-                <ArrowDownTrayIcon className="w-4 h-4" />
-              )}
-              Télécharger PDF
-            </button>
+            {facture.portal_url && (
+              <a
+                href={facture.portal_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-medium transition-colors"
+              >
+                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                Voir la facture PDF
+              </a>
+            )}
 
-            {facture.status === 'en_attente' && (
+            {/* {facture.status === 'en_attente' && (
               <>
                 <button
                   onClick={() => openConfirm('payee')}
@@ -286,7 +275,7 @@ const FactureDetailPage = () => {
                   Annuler
                 </button>
               </>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -399,6 +388,25 @@ const FactureDetailPage = () => {
               </div>
             </div>
 
+            {/* Odoo Portal Link */}
+            {facture.portal_url && (
+              <div className="bg-white rounded-xl shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Facture Odoo</h2>
+                <a
+                  href={facture.portal_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                >
+                  <ArrowTopRightOnSquareIcon className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium text-purple-900">Voir sur le portail Odoo</p>
+                    <p className="text-sm text-purple-600">Télécharger ou consulter le PDF</p>
+                  </div>
+                </a>
+              </div>
+            )}
+
             {/* Linked Devis */}
             <div className="bg-white rounded-xl shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Devis associé</h2>
@@ -419,7 +427,8 @@ const FactureDetailPage = () => {
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <h3 className="font-semibold text-yellow-800 mb-2">⏳ En attente de paiement</h3>
                 <p className="text-sm text-yellow-700">
-                  Cette facture est en attente de règlement. Cliquez sur "Payer" une fois le paiement reçu.
+                  Cette facture est en attente de règlement.
+                   {/* Cliquez sur "Payer" une fois le paiement reçu. */}
                 </p>
               </div>
             )}
