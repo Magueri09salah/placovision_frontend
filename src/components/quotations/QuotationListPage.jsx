@@ -1,7 +1,8 @@
 // src/pages/QuotationListPage.jsx
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '../layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
 
@@ -68,103 +69,99 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+// Custom hook for debounced value
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 const QuotationListPage = () => {
-  const [quotations, setQuotations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [stats, setStats] = useState(null);
-  
+  const queryClient = useQueryClient();
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState(null);
 
-  // Fetch quotations
-  const fetchQuotations = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const params = {
-        page: currentPage,
-        per_page: 10,
-      };
-      
-      if (search) params.search = search;
+  const debouncedSearch = useDebounce(search, 500);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter]);
+
+  // Quotations query
+  const {
+    data: quotationsData,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['quotations', currentPage, statusFilter, debouncedSearch],
+    queryFn: async () => {
+      const params = { page: currentPage, per_page: 10 };
+      if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
-
       const response = await quotationAPI.getAll(params);
-      
-      // Handle response structure
-      if (response.data.success) {
-        setQuotations(response.data.data || []);
-        setPagination(response.data.meta || null);
-      } else {
-        setQuotations(response.data.data || response.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching quotations:', err);
-      setError('Erreur lors du chargement des devis');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return response.data;
+    },
+    keepPreviousData: true,
+  });
 
-  // Fetch stats
-  const fetchStats = async () => {
-    try {
+  // Stats query
+  const { data: stats } = useQuery({
+    queryKey: ['quotationStats'],
+    queryFn: async () => {
       const response = await quotationAPI.getStats();
-      if (response.data.success) {
-        setStats(response.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    }
-  };
+      return response.data?.success ? response.data.data : null;
+    },
+  });
 
-  useEffect(() => {
-    fetchQuotations();
-    fetchStats();
-  }, [currentPage, statusFilter]);
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id) => quotationAPI.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+    },
+    onError: () => {
+      alert('Erreur lors de la suppression');
+    },
+  });
 
-  // Search with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (currentPage === 1) {
-        fetchQuotations();
-      } else {
-        setCurrentPage(1);
-      }
-    }, 500);
+  // Duplicate mutation (ready to uncomment)
+  // const duplicateMutation = useMutation({
+  //   mutationFn: (id) => quotationAPI.duplicate(id),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['quotations'] });
+  //     queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+  //   },
+  //   onError: () => {
+  //     alert('Erreur lors de la duplication');
+  //   },
+  // });
 
-    return () => clearTimeout(timer);
-  }, [search]);
+  // Derive data from query
+  const quotations = quotationsData?.success
+    ? (quotationsData.data || [])
+    : (quotationsData?.data || []);
+  const pagination = quotationsData?.meta || null;
+  const error = queryError ? 'Erreur lors du chargement des devis' : null;
 
   // Handle delete
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce devis ?')) return;
-
-    try {
-      await quotationAPI.delete(id);
-      fetchQuotations();
-      fetchStats();
-    } catch (err) {
-      console.error('Error deleting quotation:', err);
-      alert('Erreur lors de la suppression');
-    }
+    deleteMutation.mutate(id);
   };
 
   // Handle duplicate
-  // const handleDuplicate = async (id) => {
-  //   try {
-  //     await quotationAPI.duplicate(id);
-  //     fetchQuotations();
-  //     fetchStats();
-  //   } catch (err) {
-  //     console.error('Error duplicating quotation:', err);
-  //     alert('Erreur lors de la duplication');
-  //   }
+  // const handleDuplicate = (id) => {
+  //   duplicateMutation.mutate(id);
   // };
 
   // Format currency
@@ -394,7 +391,8 @@ const QuotationListPage = () => {
                           {/* Delete */}
                           <button
                             onClick={() => handleDelete(quotation.id)}
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            disabled={deleteMutation.isPending}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                             title="Supprimer"
                           >
                             <TrashIcon className="w-5 h-5" />
