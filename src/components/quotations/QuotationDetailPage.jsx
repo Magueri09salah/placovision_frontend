@@ -417,17 +417,6 @@ const QuotationDetailPage = () => {
               </Link>
             )}
             
-            {quotation.status === 'sent' && (
-              <>
-                <button onClick={() => handleStatusChange('accepted')} disabled={actionLoading} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                  <CheckCircleIcon className="w-4 h-4" /> Accepté
-                </button>
-                <button onClick={() => handleStatusChange('rejected')} disabled={actionLoading} className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                  <XCircleIcon className="w-4 h-4" /> Refusé
-                </button>
-              </>
-            )}
-            
             <button onClick={handleDownloadPdf} disabled={actionLoading} className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
               <ArrowDownTrayIcon className="w-4 h-4" />
               Télécharger le devis

@@ -3,6 +3,7 @@
 // + Envoi automatique vers Odoo à la création
 
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
@@ -287,6 +288,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 // ============ COMPOSANT PRINCIPAL ============
 const QuotationFormPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState(''); // '', 'creating', 'syncing'
@@ -648,6 +650,8 @@ const QuotationFormPage = () => {
       }
       
       // 3. Rediriger vers la page du devis
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
       navigate(`/quotations/${createdQuotation.id}`);
       
     } catch (error) {

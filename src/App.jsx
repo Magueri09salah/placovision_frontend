@@ -272,8 +272,8 @@ const AppRoutes = () => {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: true,   
+      staleTime: 0,                
       retry: 1,
     },
   },

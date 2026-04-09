@@ -410,6 +410,9 @@ const QuotationEditPage = () => {
     try {
       const payload = { ...clientInfo, rooms: rooms.map((room, roomIndex) => ({ room_type: room.room_type, room_name: room.room_name, works: room.works.map((work, workIndex) => ({ work_type: work.work_type, epaisseur: work.epaisseur || '72', longueur: parseFloat(work.longueur) || 0, hauteur: parseFloat(work.hauteur) || 0, surface: parseFloat(work.surface) || 0, ouvertures: work.ouvertures || [], isolant: work.isolant || 'none', items: (calculatedMaterials[`${roomIndex}-${workIndex}`]?.items || []).map(item => ({ designation: item.designation, quantity_calculated: item.quantity_calculated, quantity_adjusted: item.quantity_adjusted, unit: item.unit, unit_price: item.unit_price })) })) })) };
       await quotationAPI.update(id, payload);
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+      queryClient.invalidateQueries({ queryKey: ['quotation', id] }); 
       navigate(`/quotations/${id}`);
     } catch (error) {
       setFormError(error.response?.data?.message || 'Erreur lors de la mise à jour.');
