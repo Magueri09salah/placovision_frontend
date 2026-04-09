@@ -50,9 +50,12 @@ const SpinnerIcon = ({ className }) => (
 
 // Status config
 const STATUS_CONFIG = {
-  en_attente: { label: 'En attente', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700', icon: '⏳' },
-  payee: { label: 'Payée', bgColor: 'bg-green-100', textColor: 'text-green-700', icon: '✅' },
-  annulee: { label: 'Annulée', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
+  non_payee:  { label: 'Non payée',           bgColor: 'bg-yellow-100',  textColor: 'text-yellow-700',  icon: '⏳' },
+  partielle:  { label: 'Paiement partiel',    bgColor: 'bg-orange-100',  textColor: 'text-orange-700',  icon: '💳' },
+  en_cours:   { label: 'En cours de paiement', bgColor: 'bg-blue-100',   textColor: 'text-blue-700',    icon: '🔄' },
+  payee:      { label: 'Payée',               bgColor: 'bg-green-100',   textColor: 'text-green-700',   icon: '✅' },
+  annulee:    { label: 'Annulée',             bgColor: 'bg-red-100',     textColor: 'text-red-700',     icon: '❌' },
+  en_attente: { label: 'En attente',          bgColor: 'bg-gray-100',    textColor: 'text-gray-700',    icon: '⏳' },
 };
 
 const ROOM_ICONS = {
@@ -422,30 +425,40 @@ const FactureDetailPage = () => {
               </Link>
             </div>
 
-            {/* Status Info */}
-            {facture.status === 'en_attente' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <h3 className="font-semibold text-yellow-800 mb-2">⏳ En attente de paiement</h3>
-                <p className="text-sm text-yellow-700">
-                  Cette facture est en attente de règlement.
-                   {/* Cliquez sur "Payer" une fois le paiement reçu. */}
-                </p>
-              </div>
-            )}
+              {facture.status === 'non_payee' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-yellow-800 mb-2">⏳ Non payée</h3>
+                  <p className="text-sm text-yellow-700">Cette facture est en attente de règlement.</p>
+                </div>
+              )}
 
-            {facture.status === 'payee' && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <h3 className="font-semibold text-green-800 mb-2">✅ Facture payée</h3>
-                <p className="text-sm text-green-700">Cette facture a été réglée.</p>
-              </div>
-            )}
+              {facture.status === 'partielle' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-orange-800 mb-2">💳 Paiement partiel</h3>
+                  <p className="text-sm text-orange-700">Un acompte ou paiement partiel a été reçu.</p>
+                </div>
+              )}
 
-            {facture.status === 'annulee' && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <h3 className="font-semibold text-red-800 mb-2">❌ Facture annulée</h3>
-                <p className="text-sm text-red-700">Cette facture a été annulée.</p>
-              </div>
-            )}
+              {facture.status === 'en_cours' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-blue-800 mb-2">🔄 En cours de paiement</h3>
+                  <p className="text-sm text-blue-700">Le paiement a été saisi, en attente de validation bancaire.</p>
+                </div>
+              )}
+
+              {facture.status === 'payee' && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-green-800 mb-2">✅ Facture payée</h3>
+                  <p className="text-sm text-green-700">Cette facture a été réglée.</p>
+                </div>
+              )}
+
+              {facture.status === 'annulee' && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-red-800 mb-2">❌ Facture annulée</h3>
+                  <p className="text-sm text-red-700">Cette facture a été annulée.</p>
+                </div>
+              )}
           </div>
         </div>
       </div>

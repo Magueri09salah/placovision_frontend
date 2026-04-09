@@ -38,9 +38,12 @@ const ChevronRightIcon = ({ className }) => (
 
 // Status config
 const STATUS_CONFIG = {
-  en_attente: { label: 'En attente', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700', icon: '⏳' },
-  payee: { label: 'Payée', bgColor: 'bg-green-100', textColor: 'text-green-700', icon: '✅' },
-  annulee: { label: 'Annulée', bgColor: 'bg-red-100', textColor: 'text-red-700', icon: '❌' },
+  non_payee:  { label: 'Non payée',           bgColor: 'bg-yellow-100',  textColor: 'text-yellow-700',  icon: '⏳' },
+  partielle:  { label: 'Paiement partiel',    bgColor: 'bg-orange-100',  textColor: 'text-orange-700',  icon: '💳' },
+  en_cours:   { label: 'En cours de paiement', bgColor: 'bg-blue-100',   textColor: 'text-blue-700',    icon: '🔄' },
+  payee:      { label: 'Payée',               bgColor: 'bg-green-100',   textColor: 'text-green-700',   icon: '✅' },
+  annulee:    { label: 'Annulée',             bgColor: 'bg-red-100',     textColor: 'text-red-700',     icon: '❌' },
+  en_attente: { label: 'En attente',          bgColor: 'bg-gray-100',    textColor: 'text-gray-700',    icon: '⏳' },
 };
 
 const FactureListPage = () => {
@@ -104,26 +107,31 @@ const FactureListPage = () => {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow p-4">
-              <p className="text-sm text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total || 0}</p>
-            </div>
-            <div className="bg-yellow-50 rounded-xl shadow p-4">
-              <p className="text-sm text-yellow-600">En attente</p>
-              <p className="text-2xl font-bold text-yellow-700">{stats.en_attente || 0}</p>
-              <p className="text-xs text-yellow-600 mt-1">{formatAmount(stats.total_en_attente)} DH</p>
-            </div>
-            <div className="bg-green-50 rounded-xl shadow p-4">
-              <p className="text-sm text-green-600">Payées</p>
-              <p className="text-2xl font-bold text-green-700">{stats.payee || 0}</p>
-              <p className="text-xs text-green-600 mt-1">{formatAmount(stats.total_payee)} DH</p>
-            </div>
-            <div className="bg-red-50 rounded-xl shadow p-4">
-              <p className="text-sm text-red-600">Annulées</p>
-              <p className="text-2xl font-bold text-red-700">{stats.annulee || 0}</p>
-            </div>
-          </div>
+<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+  <div className="bg-white rounded-xl shadow p-4">
+    <p className="text-sm text-gray-500">Total</p>
+    <p className="text-2xl font-bold text-gray-900">{stats.total || 0}</p>
+  </div>
+  <div className="bg-yellow-50 rounded-xl shadow p-4">
+    <p className="text-sm text-yellow-600">Non payées</p>
+    <p className="text-2xl font-bold text-yellow-700">{stats.non_payee || 0}</p>
+    <p className="text-xs text-yellow-600 mt-1">{formatAmount(stats.total_non_payee)} DH</p>
+  </div>
+  <div className="bg-orange-50 rounded-xl shadow p-4">
+    <p className="text-sm text-orange-600">Partielles</p>
+    <p className="text-2xl font-bold text-orange-700">{stats.partielle || 0}</p>
+    <p className="text-xs text-orange-600 mt-1">{formatAmount(stats.total_partielle)} DH</p>
+  </div>
+  <div className="bg-green-50 rounded-xl shadow p-4">
+    <p className="text-sm text-green-600">Payées</p>
+    <p className="text-2xl font-bold text-green-700">{stats.payee || 0}</p>
+    <p className="text-xs text-green-600 mt-1">{formatAmount(stats.total_payee)} DH</p>
+  </div>
+  <div className="bg-red-50 rounded-xl shadow p-4">
+    <p className="text-sm text-red-600">Annulées</p>
+    <p className="text-2xl font-bold text-red-700">{stats.annulee || 0}</p>
+  </div>
+</div>
         )}
 
         {/* Filters */}
@@ -143,12 +151,14 @@ const FactureListPage = () => {
             </form>
 
             <div className="flex gap-2 flex-wrap">
-              {[
-                { value: 'all', label: 'Toutes' },
-                { value: 'en_attente', label: 'En attente' },
-                { value: 'payee', label: 'Payées' },
-                { value: 'annulee', label: 'Annulées' },
-              ].map((option) => (
+            {[
+              { value: 'all', label: 'Toutes' },
+              { value: 'non_payee', label: 'Non payées' },
+              { value: 'partielle', label: 'Partielles' },
+              { value: 'en_cours', label: 'En cours' },
+              { value: 'payee', label: 'Payées' },
+              { value: 'annulee', label: 'Annulées' },
+            ].map((option) => (
                 <button
                   key={option.value}
                   onClick={() => handleStatusFilter(option.value)}
