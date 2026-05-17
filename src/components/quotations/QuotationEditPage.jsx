@@ -2,6 +2,7 @@
 // VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes) + isolant optionnel
 
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
 import { quotationAPI } from '../../services/quotationApi';
@@ -250,6 +251,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 const QuotationEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
