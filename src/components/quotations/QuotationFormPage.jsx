@@ -211,7 +211,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       const totalMontants = baseMontants + extraMontants;
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
-      add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
+      // add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
       addIsolant(surface);
       add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 20)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
       add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 3)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
