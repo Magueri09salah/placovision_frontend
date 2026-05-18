@@ -837,27 +837,38 @@ const QuotationFormPage = () => {
 
                     <p className="text-sm text-gray-600 mb-4">Choisissez le type de travaux :</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                      {WORK_TYPES.map((workType) => {
-                        const isAdded = room.works.some(w => w.work_type === workType.value);
-                        return (
-                          <button
-                            key={workType.value}
-                            type="button"
-                            onClick={() => !isAdded && addWorkToRoom(roomIndex, workType.value)}
-                            disabled={isAdded}
-                            className={`p-3 rounded-lg border-2 text-left transition-all ${isAdded ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-red-500 hover:bg-red-50'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{workType.icon}</span>
-                              <div>
-                                <span className="text-sm font-medium block">{workType.label}</span>
-                                <span className="text-xs text-gray-500">{workType.description}</span>
-                              </div>
-                              {isAdded && <CheckIcon className="w-4 h-4 ml-auto text-green-600" />}
-                            </div>
-                          </button>
-                        );
-                      })}
+{WORK_TYPES.map((workType) => {
+  const existingIndex = room.works.findIndex(w => w.work_type === workType.value);
+  const isAdded = existingIndex !== -1;
+
+  return (
+    <button
+      key={workType.value}
+      type="button"
+      onClick={() => {
+        if (isAdded) {
+          removeWork(roomIndex, existingIndex);
+        } else {
+          addWorkToRoom(roomIndex, workType.value);
+        }
+      }}
+      className={`p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
+        isAdded
+          ? 'border-green-500 bg-green-50 text-green-700'
+          : 'border-gray-200 hover:border-red-500 hover:bg-red-50'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-xl">{workType.icon}</span>
+        <div>
+          <span className="text-sm font-medium block">{workType.label}</span>
+          <span className="text-xs text-gray-500">{workType.description}</span>
+        </div>
+        {isAdded && <CheckIcon className="w-4 h-4 ml-auto text-green-600" />}
+      </div>
+    </button>
+  );
+})}
                     </div>
 
                     {room.works.length > 0 && (
