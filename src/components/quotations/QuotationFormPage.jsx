@@ -1,4 +1,4 @@
-// src/pages/QuotationFormPage.jsx
+;// src/pages/QuotationFormPage.jsx
 // VERSION SIMPLIFIÉE : 3 types d'ouvrages + épaisseur cloison + ouvertures (fenêtres/portes) + isolant optionnel
 // + Envoi automatique vers Odoo à la création
 
@@ -185,7 +185,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       quantity_adjusted: quantity,
       unit,
       unit_price: unitPrice,
-      total_ht: quantity * unitPrice,
+      total_ht: Number((quantity * unitPrice).toFixed(2)),
       is_modified: false,
     });
   };
@@ -202,13 +202,21 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
   switch (workType) {
     case 'habillage_mur': {
       add(plaque.designation, arrondiSup(surface), 'm²', plaque.prix);
-      const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;
-      const baseMontants = (nbLignes * 2) - 2;
-      const hauteurSup = H - DTU.PROFIL_LONGUEUR;
-      const extraMontants = hauteurSup > 0 
-        ? arrondiSup((hauteurSup * nbLignes * 2) / DTU.PROFIL_LONGUEUR) 
-        : 0;
-      const totalMontants = baseMontants + extraMontants;
+      // const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;
+      // const baseMontants = (nbLignes * 2) - 2;
+      // const hauteurSup = H - DTU.PROFIL_LONGUEUR;
+      // const extraMontants = hauteurSup > 0 
+      //   ? arrondiSup((hauteurSup * nbLignes * 2) / DTU.PROFIL_LONGUEUR) 
+      //   : 0;
+      // const totalMontants = baseMontants + extraMontants;
+
+      const nbLignesMontants = Math.ceil((L / DTU.ENTRAXE) + 1);
+
+      const montantsStructure = (2 * nbLignesMontants) - 2;
+
+      const totalMontants = Math.ceil(
+        (montantsStructure * H) / DTU.PROFIL_LONGUEUR
+      );
       add('Montant M48', totalMontants, 'unité', PRIX_UNITAIRES.montant_48);
       add('Rail R48', arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.rail_48);
       // add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
@@ -229,15 +237,28 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
       add(plaque.designation, arrondiSup(surface * 2), 'm²', plaque.prix);
 
-      const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
-      const baseMontants = (nbLignesMontants * 2) - 2;
-      const hauteurSup = H - DTU.PROFIL_LONGUEUR;
-      const extraMontants = hauteurSup > 0
-        ? arrondiSup((hauteurSup * nbLignesMontants * 2) / DTU.PROFIL_LONGUEUR)
-        : 0;
 
-      let totalMontants = baseMontants + extraMontants;
-      if (isDouble) totalMontants *= 2;
+      // const nbLignesMontants = arrondiSup((L / DTU.ENTRAXE) + 1);
+      // const baseMontants = (nbLignesMontants * 2) - 2;
+      // const hauteurSup = H - DTU.PROFIL_LONGUEUR;
+      // const extraMontants = hauteurSup > 0
+      //   ? arrondiSup((hauteurSup * nbLignesMontants * 2) / DTU.PROFIL_LONGUEUR)
+      //   : 0;
+
+      // let totalMontants = baseMontants + extraMontants;
+      // if (isDouble) totalMontants *= 2;
+      
+      const nbLignesMontants = Math.ceil((L / DTU.ENTRAXE) + 1);
+
+      const montantsStructure = (2 * nbLignesMontants) - 2;
+
+      let totalMontants = Math.ceil(
+        (montantsStructure * H) / DTU.PROFIL_LONGUEUR
+      );
+
+      if (isDouble) {
+        totalMontants *= 2;
+}
 
       const totalRails = arrondiSup((L * 2) / DTU.PROFIL_LONGUEUR);
 
@@ -837,38 +858,27 @@ const QuotationFormPage = () => {
 
                     <p className="text-sm text-gray-600 mb-4">Choisissez le type de travaux :</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-{WORK_TYPES.map((workType) => {
-  const existingIndex = room.works.findIndex(w => w.work_type === workType.value);
-  const isAdded = existingIndex !== -1;
-
-  return (
-    <button
-      key={workType.value}
-      type="button"
-      onClick={() => {
-        if (isAdded) {
-          removeWork(roomIndex, existingIndex);
-        } else {
-          addWorkToRoom(roomIndex, workType.value);
-        }
-      }}
-      className={`p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
-        isAdded
-          ? 'border-green-500 bg-green-50 text-green-700'
-          : 'border-gray-200 hover:border-red-500 hover:bg-red-50'
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{workType.icon}</span>
-        <div>
-          <span className="text-sm font-medium block">{workType.label}</span>
-          <span className="text-xs text-gray-500">{workType.description}</span>
-        </div>
-        {isAdded && <CheckIcon className="w-4 h-4 ml-auto text-green-600" />}
-      </div>
-    </button>
-  );
-})}
+                      {WORK_TYPES.map((workType) => {
+                        const isAdded = room.works.some(w => w.work_type === workType.value);
+                        return (
+                          <button
+                            key={workType.value}
+                            type="button"
+                            onClick={() => !isAdded && addWorkToRoom(roomIndex, workType.value)}
+                            disabled={isAdded}
+                            className={`p-3 rounded-lg border-2 text-left transition-all ${isAdded ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-red-500 hover:bg-red-50'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{workType.icon}</span>
+                              <div>
+                                <span className="text-sm font-medium block">{workType.label}</span>
+                                <span className="text-xs text-gray-500">{workType.description}</span>
+                              </div>
+                              {isAdded && <CheckIcon className="w-4 h-4 ml-auto text-green-600" />}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {room.works.length > 0 && (
