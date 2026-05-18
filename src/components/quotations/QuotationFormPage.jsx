@@ -245,13 +245,13 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       
       if (isDouble) {
         add(railLabel, totalRails * 2, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Fourrure', arrondiSup((surface / 10) * 4) * 2, 'unité', PRIX_UNITAIRES.fourrure);
+        // add('Fourrure', arrondiSup((surface / 10) * 4) * 2, 'unité', PRIX_UNITAIRES.fourrure);
         addIsolant(surface * 2);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 45)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 6)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
       } else {
         add(railLabel, totalRails, 'unité', PRIX_UNITAIRES[config.rail]);
-        add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
+        // add('Fourrure', arrondiSup((surface / 10) * 4), 'unité', PRIX_UNITAIRES.fourrure);
         addIsolant(surface);
         add('Vis TTPC 25 mm', visToBoites(arrondiSup(surface * 40)), 'boîte', PRIX_UNITAIRES.vis_25mm_boite);
         add('Vis TTPC 9 mm', visToBoites(arrondiSup(surface * 4)), 'boîte', PRIX_UNITAIRES.vis_9mm_boite);
