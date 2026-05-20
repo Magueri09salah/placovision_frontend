@@ -201,7 +201,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
   switch (workType) {
     case 'habillage_mur': {
-      const totalPlaques = Math.ceil(L / 1.20) * Math.ceil(H / 3);
+      const totalPlaques = Math.ceil(L / 1.20) * Math.ceil(H /  2.80);
       add(plaque.designation, totalPlaques, 'unité', plaque.prix);
       // const nbLignes = arrondiSup(L / DTU.ENTRAXE) + 1;
       // const baseMontants = (nbLignes * 2) - 2;
@@ -236,7 +236,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
       const montantLabel = config.montant === 'montant_48' ? 'Montant M48' : 'Montant M70';
       const railLabel = config.rail === 'rail_48' ? 'Rail R48' : 'Rail R70';
 
-      const totalPlaques = (Math.ceil(L / 1.20) * Math.ceil(H / 3)) * 2;
+      const totalPlaques = (Math.ceil(L / 1.20) * Math.ceil(H /  2.80)) * 2;
       add(plaque.designation, totalPlaques, 'unité', plaque.prix);
 
 
@@ -288,7 +288,7 @@ const calculateMaterialsForWork = (workType, longueur, hauteur, roomType, epaiss
 
     case 'plafond_ba13': {
       const l = H;
-      const totalPlaques = Math.ceil(L / 1.20) * Math.ceil(H / 3);
+      const totalPlaques = Math.ceil(L / 1.20) * Math.ceil(H /  2.80);
       add(plaque.designation, totalPlaques, 'unité', plaque.prix);
       add('Fourrure', arrondiSup((l / DTU.ENTRAXE) * L / DTU.PROFIL_LONGUEUR), 'unité', PRIX_UNITAIRES.fourrure);
       
